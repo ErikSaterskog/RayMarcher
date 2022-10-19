@@ -182,6 +182,27 @@ impl Ops {
 } //bygga träd med dessa klasser
 
 
+fn union(object_a, object_b, ray_pos: Vec3) -> (f32, Vec3) {
+        //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
+        sdf_a = self.object_a.sdf(ray_pos)
+        sdf_b = self.object_b.sdf(ray_pos)
+
+        if self.sdf_a >= self.sdf_b {
+            return (self.sdf_b, self.color_b)
+        } else {
+            return (self.sdf_a, self.color_a)
+        }
+    }
+} 
+
+fn op_tree(objects: , ray_pos) -> (f32, Vec3) {
+    union()
+
+
+
+}
+
+
 fn array_to_image(arr: Array3<u8>) -> RgbImage {
     assert!(arr.is_standard_layout());
 
