@@ -182,13 +182,7 @@ impl Clone for Sphere {
 // } //bygga träd med dessa klasser
 
 
-fn union(object_a: Sphere , object_b: Sphere, ray_pos: Vec3) -> (f32, Vec3) {
-    //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
-    let sdf_a = object_a.sdf(ray_pos);
-    let color_a = object_a.color;
-    let sdf_b = object_b.sdf(ray_pos);
-    let color_b = object_b.color;
-
+fn union(sdf_a: f32 , color_a: Vec3, sdf_b: f32 , color_b: Vec3, ray_pos: Vec3) -> (f32, Vec3) {
     if sdf_a >= sdf_b {
         return (sdf_b, color_b)
     } else {
@@ -198,7 +192,13 @@ fn union(object_a: Sphere , object_b: Sphere, ray_pos: Vec3) -> (f32, Vec3) {
 
 
 fn op_tree(objects: &Vec<Sphere> , ray_pos: Vec3) -> (f32, Vec3) {    
-    let (sdf, color) = union(objects[0], objects[1], ray_pos);
+    let sdf_a = objects[0].sdf(ray_pos);
+    let color_a = objects[0].color;
+    
+    let sdf_b = objects[1].sdf(ray_pos);
+    let color_b = objects[1].color;
+
+    let (sdf, color) = union(sdf_a, color_a, sdf_b, color_b, ray_pos);
     return (sdf, color)
 }
 
