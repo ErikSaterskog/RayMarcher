@@ -160,46 +160,46 @@ impl Clone for Sphere {
     }
 }
 
-struct Ops {
-    sdf_a: f32,
-    color_a: Vec3,
-    sdf_b: f32,
-    color_b: Vec3
+// struct Ops {
+//     sdf_a: f32,
+//     color_a: Vec3,
+//     sdf_b: f32,
+//     color_b: Vec3
+// }
+
+// impl Ops {
+//     fn Union(&self, ray_pos: Vec3) -> (f32, Vec3) {
+//         //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
+//         //sdf_a = self.object_a.sdf(ray_pos)
+//         //sdf_b = self.object_b.sdf(ray_pos)
+
+//         if self.sdf_a >= self.sdf_b {
+//             return (self.sdf_b, self.color_b)
+//         } else {
+//             return (self.sdf_a, self.color_a)
+//         }
+//     }
+// } //bygga träd med dessa klasser
+
+
+fn union(object_a: Sphere , object_b: Sphere, ray_pos: Vec3) -> (f32, Vec3) {
+    //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
+    let sdf_a = object_a.sdf(ray_pos);
+    let color_a = object_a.color;
+    let sdf_b = object_b.sdf(ray_pos);
+    let color_b = object_b.color;
+
+    if sdf_a >= sdf_b {
+        return (sdf_b, color_b)
+    } else {
+        return (sdf_a, color_a)
+    }
 }
 
-impl Ops {
-    fn Union(&self, ray_pos: Vec3) -> (f32, Vec3) {
-        //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
-        //sdf_a = self.object_a.sdf(ray_pos)
-        //sdf_b = self.object_b.sdf(ray_pos)
 
-        if self.sdf_a >= self.sdf_b {
-            return (self.sdf_b, self.color_b)
-        } else {
-            return (self.sdf_a, self.color_a)
-        }
-    }
-} //bygga träd med dessa klasser
-
-
-fn union(object_a, object_b, ray_pos: Vec3) -> (f32, Vec3) {
-        //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
-        sdf_a = self.object_a.sdf(ray_pos)
-        sdf_b = self.object_b.sdf(ray_pos)
-
-        if self.sdf_a >= self.sdf_b {
-            return (self.sdf_b, self.color_b)
-        } else {
-            return (self.sdf_a, self.color_a)
-        }
-    }
-} 
-
-fn op_tree(objects: , ray_pos) -> (f32, Vec3) {
-    union()
-
-
-
+fn op_tree(objects: &Vec<Sphere> , ray_pos: Vec3) -> (f32, Vec3) {    
+    let (sdf, color) = union(objects[0], objects[1], ray_pos);
+    return (sdf, color)
 }
 
 
@@ -241,7 +241,7 @@ fn ray(
         
         //find the step length
         //for object in objects.iter() {
-        let (sdf_val, color) = Ops::Union(&Ops{sdf_a: objects[0].sdf(ray_pos), color_a: objects[0].color, sdf_b: objects[1].sdf(ray_pos), color_b: objects[1].color}, ray_pos);
+        let (sdf_val, color) = op_tree(objects, ray_pos);
         //}
         
         //take the step
@@ -261,10 +261,10 @@ fn ray(
             if bounce_depth < MAX_BOUNCE_DEPTH {
                 //find normal
                 
-                let distc = objects[0].sdf(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z});        
-                let distx = objects[0].sdf(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z});                 
-                let disty = objects[0].sdf(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z});                  
-                let distz = objects[0].sdf(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON});
+                let (distc,_) = op_tree(objects, Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z});        
+                let (distx,_) = op_tree(objects, Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z});                 
+                let (disty,_) = op_tree(objects, Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z});                  
+                let (distz,_) = op_tree(objects, Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON});
                 let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON});
                 
 
