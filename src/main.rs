@@ -2,6 +2,7 @@ use image::RgbImage;
 use ndarray::{Array3};
 use std::time::Instant;
 use std::ops::{Add, Div, Mul, Sub, Neg};
+use std::cmp;
 //use rayon::prelude::*;
 
 
@@ -151,6 +152,36 @@ impl Sphere {
     }
 }
 
+impl Copy for Sphere { }
+
+impl Clone for Sphere {
+    fn clone(&self) -> Sphere {
+        *self
+    }
+}
+
+struct Ops {
+    sdf_a: f32,
+    color_a: Vec3,
+    sdf_b: f32,
+    color_b: Vec3
+}
+
+impl Ops {
+    fn Union(&self, ray_pos: Vec3) -> (f32, Vec3) {
+        //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
+        //sdf_a = self.object_a.sdf(ray_pos)
+        //sdf_b = self.object_b.sdf(ray_pos)
+
+        if self.sdf_a >= self.sdf_b {
+            return (self.sdf_b, self.color_b)
+        } else {
+            return (self.sdf_a, self.color_a)
+        }
+    }
+} //bygga träd med dessa klasser
+
+
 fn array_to_image(arr: Array3<u8>) -> RgbImage {
     assert!(arr.is_standard_layout());
 
@@ -171,6 +202,8 @@ fn ray(
     const EPSILON: f32 = 0.0001;
     const MAX_BOUNCE_DEPTH: u8 = 5;
     const MAX_DISTANCE: f32 = 128.0;
+    
+    let background_color = Vec3::zeros();
 
     let mut ray_pos = start_pos.clone();
     let mut impact_normal = Vec3::zeros();
@@ -187,7 +220,7 @@ fn ray(
         
         //find the step length
         //for object in objects.iter() {
-        let sdf_val = objects[0].sdf(ray_pos);
+        let (sdf_val, color) = Ops::Union(&Ops{sdf_a: objects[0].sdf(ray_pos), color_a: objects[0].color, sdf_b: objects[1].sdf(ray_pos), color_b: objects[1].color}, ray_pos);
         //}
         
         //take the step
@@ -196,7 +229,7 @@ fn ray(
 
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
-            hit = true;
+            return background_color;
         }
 
         //check if hit
@@ -246,11 +279,11 @@ fn ray(
                 let s = 0.5f32* 0.0f32.max(Vec3::dot(&light_u_vector_rot,&-u_vec)).powf(20.0f32)* 0.5f32;
                 let intensity = a + d + s;
 
-                color = objects[0].color * intensity;
+                return color * intensity;
             }
         }
     }
-    return color;
+    return color * intensity
 }
 
 
@@ -279,9 +312,17 @@ fn main() {
     let mut objects = vec![];
 
     objects.push( Sphere{
-        pos: Vec3{x:2.0, y:0.0, z:0.0},
+        pos: Vec3{x:3.0, y:1.0, z:0.0},
         radius: 0.5f32,
         color: Vec3{x:20.0, y:255.0, z:20.0},
+        light_prop: Vec3{x: 1.0, y:1.0, z:1.0},
+        alpha: 20.0f32
+    });
+
+    objects.push( Sphere{
+        pos: Vec3{x:3.0, y:-1.0, z:0.0},
+        radius: 0.5f32,
+        color: Vec3{x:255.0, y:20.0, z:20.0},
         light_prop: Vec3{x: 1.0, y:1.0, z:1.0},
         alpha: 20.0f32
     });
