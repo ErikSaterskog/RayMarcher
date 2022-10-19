@@ -281,7 +281,7 @@ fn main() {
     objects.push( Sphere{
         pos: Vec3{x:2.0, y:0.0, z:0.0},
         radius: 0.5f32,
-        color: Vec3{x:10.0, y:255.0, z:10.0},
+        color: Vec3{x:20.0, y:255.0, z:20.0},
         light_prop: Vec3{x: 1.0, y:1.0, z:1.0},
         alpha: 20.0f32
     });
