@@ -3,7 +3,7 @@ use ndarray::{Array3};
 use std::time::Instant;
 use std::ops::{Add, Div, Mul, Sub, Neg};
 use std::cmp;
-//use rayon::prelude::*;
+use crate::Op::{Union, Move, Scale, Sphere};
 
 
 #[derive(Debug, Clone, Copy)]
@@ -137,70 +137,84 @@ impl Neg for Vec3 {
     }
 }
 
-
-struct Sphere {
-    pos: Vec3,
-    radius: f32,
-    color: Vec3,
-    light_prop: Vec3,
-    alpha: f32,
-}
-
-impl Sphere {
-    fn sdf(&self, ray_pos: Vec3) -> f32 {
-        Vec3::len(&(ray_pos - self.pos)) - self.radius
-    }
-}
-
-impl Copy for Sphere { }
-
-impl Clone for Sphere {
-    fn clone(&self) -> Sphere {
-        *self
-    }
-}
-
-// struct Ops {
-//     sdf_a: f32,
-//     color_a: Vec3,
-//     sdf_b: f32,
-//     color_b: Vec3
+// #[derive(Debug, Clone, Copy)]
+// struct Sphere {
+//     pos: Vec3,
+//     radius: f32,
+//     color: Vec3,
+//     light_prop: Vec3,
+//     alpha: f32,
 // }
 
-// impl Ops {
-//     fn Union(&self, ray_pos: Vec3) -> (f32, Vec3) {
-//         //f32::min(self.object_a.sdf(ray_pos),self.object_b.sdf(ray_pos))
-//         //sdf_a = self.object_a.sdf(ray_pos)
-//         //sdf_b = self.object_b.sdf(ray_pos)
-
-//         if self.sdf_a >= self.sdf_b {
-//             return (self.sdf_b, self.color_b)
-//         } else {
-//             return (self.sdf_a, self.color_a)
-//         }
+// impl Sphere {
+//     fn sdf(&self, ray_pos: Vec3) -> f32 {
+//         Vec3::len(&(ray_pos - self.pos)) - self.radius
 //     }
-// } //bygga träd med dessa klasser
+// }
+
+// #[derive(Debug, Clone, Copy)]
+// struct SkySphere {
+//     pos: Vec3,
+//     radius: f32,
+//     color: Vec3,
+//     light_prop: Vec3,
+//     alpha: f32,
+// }
+
+// impl SkySphere {
+//     fn sdf(&self, ray_pos: Vec3) -> f32 {
+//         self.radius - Vec3::len(&(ray_pos - self.pos))
+//     }
+// }
+
+// #[derive(Debug, Clone, Copy)]
+// struct Torus {
+//     pos: Vec3,
+//     ra: f32,
+//     rb: f32,
+//     color: Vec3,
+//     light_prop: Vec3,
+//     alpha: f32,
+// }
+
+// impl Torus {
+//     fn sdf(&self, ray_pos: Vec3) -> f32 {
+//         let h = ((ray_pos.x-self.pos.x).powi(2)+(ray_pos.z-self.pos.z).powi(2)).sqrt();
+//         return ((h-self.ra).powi(2)+(ray_pos.y-self.pos.y).powi(2)).sqrt()-self.rb
+//     }
+// }
+
+// #[derive(Debug, Clone, Copy)]
+// enum Shape {
+//     Sphere(Sphere),
+//     Torus(Torus),
+//     SkySphere(SkySphere),
+// }
+
+fn lerp(a: f32, b: f32, h: f32) -> f32 {
+    return a*h+b*(1.0f32-h)
+} 
 
 
-fn union(sdf_a: f32 , color_a: Vec3, sdf_b: f32 , color_b: Vec3, ray_pos: Vec3) -> (f32, Vec3) {
-    if sdf_a >= sdf_b {
-        return (sdf_b, color_b)
-    } else {
-        return (sdf_a, color_a)
+#[derive(Debug, Clone)]
+enum Op{
+    Union(Box<Op>, Box<Op>),
+    Sphere(),
+    Move(Box<Op>, Vec3),
+    Scale(Box<Op>, f32),
+}
+
+impl Op { 
+    fn sdf(&self, ray_pos: Vec3) -> f32 { 
+        match &self { 
+            Self::Union(a,b) => a.sdf(ray_pos).min(b.sdf(ray_pos)),
+            Self::Sphere() => Vec3::len(&ray_pos)-1.,
+            Self::Move(a,vec) => a.sdf(ray_pos - *vec),
+            Self::Scale(a,scale) => a.sdf(ray_pos/ *scale),
+        }
     }
 }
 
-
-fn op_tree(objects: &Vec<Sphere> , ray_pos: Vec3) -> (f32, Vec3) {    
-    let sdf_a = objects[0].sdf(ray_pos);
-    let color_a = objects[0].color;
-    
-    let sdf_b = objects[1].sdf(ray_pos);
-    let color_b = objects[1].color;
-
-    let (sdf, color) = union(sdf_a, color_a, sdf_b, color_b, ray_pos);
-    return (sdf, color)
-}
 
 
 fn array_to_image(arr: Array3<u8>) -> RgbImage {
@@ -216,7 +230,7 @@ fn array_to_image(arr: Array3<u8>) -> RgbImage {
 fn ray(
     start_pos: Vec3,
     u_vec: Vec3,
-    objects: &Vec<Sphere>,
+    objects: &Op,
     bounce_depth: u8,
 ) -> Vec3 {
 
@@ -224,7 +238,8 @@ fn ray(
     const MAX_BOUNCE_DEPTH: u8 = 5;
     const MAX_DISTANCE: f32 = 128.0;
     
-    let background_color = Vec3::zeros();
+    let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
+    let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
 
     let mut ray_pos = start_pos.clone();
     let mut impact_normal = Vec3::zeros();
@@ -240,17 +255,18 @@ fn ray(
     while hit == false {
         
         //find the step length
-        //for object in objects.iter() {
-        let (sdf_val, color) = op_tree(objects, ray_pos);
-        //}
-        
+        let sdf_val = objects.sdf(ray_pos);
+        let color = Vec3{x:200.0f32, y:200.0f32, z:200.0f32};
+
         //take the step
         ray_pos = ray_pos + u_vec*sdf_val;
         
-
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
-            return background_color;
+            //let r = lerp(background_color_1.x, background_color_2.x, ray_pos.y/MAX_DISTANCE);
+            //let g = lerp(background_color_1.y, background_color_2.y, ray_pos.y/MAX_DISTANCE);
+            //let b = lerp(background_color_1.z, background_color_2.z, ray_pos.y/MAX_DISTANCE);
+            return Vec3{x:0.0f32, y:0.0f32, z:0.0f32};
         }
 
         //check if hit
@@ -261,10 +277,10 @@ fn ray(
             if bounce_depth < MAX_BOUNCE_DEPTH {
                 //find normal
                 
-                let (distc,_) = op_tree(objects, Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z});        
-                let (distx,_) = op_tree(objects, Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z});                 
-                let (disty,_) = op_tree(objects, Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z});                  
-                let (distz,_) = op_tree(objects, Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON});
+                let distc = objects.sdf(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z});        
+                let distx = objects.sdf(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z});                 
+                let disty = objects.sdf(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z});                  
+                let distz = objects.sdf(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON});
                 let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON});
                 
 
@@ -330,23 +346,19 @@ fn main() {
         z: 0.0f32,
     };
 
-    let mut objects = vec![];
+    let snow_man = Union(
+        Box::new(Sphere()),
+        Box::new(Move(Box::new(Scale(Box::new(Sphere{}), 0.5)), Vec3{x:0., y:-1.2, z:0.0})));
 
-    objects.push( Sphere{
-        pos: Vec3{x:3.0, y:1.0, z:0.0},
-        radius: 0.5f32,
-        color: Vec3{x:20.0, y:255.0, z:20.0},
-        light_prop: Vec3{x: 1.0, y:1.0, z:1.0},
-        alpha: 20.0f32
-    });
+    let objects = Union(
+        Box::new(snow_man.clone()), //Mom snowman
+        Box::new(Union(
+            Box::new(Move(Box::new(snow_man.clone()), Vec3{x:0., y:0., z:2.})), //Dad snowman
+            Box::new(Move(Box::new(Scale(Box::new(snow_man.clone()), 0.5)), Vec3{x:0., y:0., z:-1.5})) //Baby snowman
+        ))
+    );
 
-    objects.push( Sphere{
-        pos: Vec3{x:3.0, y:-1.0, z:0.0},
-        radius: 0.5f32,
-        color: Vec3{x:255.0, y:20.0, z:20.0},
-        light_prop: Vec3{x: 1.0, y:1.0, z:1.0},
-        alpha: 20.0f32
-    });
+    let objects = Box::new(Move(Box::new(objects), Vec3{x:5., y:0., z:0.}));
 
     //loop to find bin positions
     for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
