@@ -42,6 +42,14 @@ impl Vec3 {
         }
     }
 
+    pub fn vec_mult(&self, other: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x * other.x,
+            y: self.y * other.y,
+            z: self.z * other.z,
+        }
+    }
+
     pub fn dist(&self, other: &Vec3) -> f32 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
             .sqrt()
@@ -200,7 +208,7 @@ fn get_indirect_lightning(
     //Ray bouncing mirrror
     //let u_vector_rot = -Vec3::rot_vector180(&normal, &u_vec);
 
-    let indirect_incoming = ray(
+    let (indirect_incoming,_) = ray(
         start_pos + normal*EPSILON*10.,
         u_vector_rot,
         &objects,
@@ -223,22 +231,22 @@ fn get_shadow(
     light_u_vec: Vec3,
     objects: &Op,
 ) -> f32 {
-    let ray_color = ray(    
+    let (light_ray_color, light_ray_hit) = ray(    
         start_pos,
         light_u_vec,
         objects,
-        100u8
+        100u8,
     );
 
-    if Vec3::len(&ray_color) < 0.1 {
-        return 1.0
+    if light_ray_hit == true {
+        return 0.0f32
     } else {
-        return 0.0
+        return 1.0f32
     }
 }
 
 fn get_sun_point() -> Vec3 {
-    return Vec3{x:0.0, y:-10.0, z:-10.0}
+    return Vec3{x:0.0, y:-100.0, z:-100.0}
 }
 
 fn get_direct_lightning(
@@ -251,7 +259,7 @@ fn get_direct_lightning(
     let sun_pos = get_sun_point();
     let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
     let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
-    let shadow = get_shadow(start_pos, light_u_vec, objects);
+    let shadow = get_shadow(start_pos+normal*EPSILON*10., light_u_vec, objects);
     let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow;
     return direct_color
 }
@@ -261,27 +269,30 @@ fn ray(
     u_vec: Vec3,
     objects: &Op,
     bounce_depth: u8,
-) -> Vec3 {
-
-    
-    const MAX_BOUNCE_DEPTH: u8 = 5;
-    const MAX_DISTANCE: f32 = 63.0;
+) -> (Vec3, bool) {
     
     let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
     let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
 
     let mut ray_pos = start_pos.clone();
-    let mut color = Vec3::zeros();
+    let mut total_color = Vec3::zeros();
     let mut intensity = 1.0f32;
     let mut hit: bool = false;
 
+    let mut i=1.0f32;
 
     while hit == false {
-        
+        i += 1.0f32;
+        if i>10000.0 {
+            println!("Warning! #1");
+            hit = true;
+            return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
+        }
+
         //find the step length
         let point = objects.Get_nearest_point(ray_pos);
         let sdf_val = point.dist;
-        let color = point.color;
+        let material_color = point.color;
         let reflectance = point.reflectance;
 
         //take the step
@@ -289,59 +300,60 @@ fn ray(
         
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
+            hit = false;
             let h = (0.0f32).max(u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
             let r = lerp(background_color_1.x, background_color_2.x, h);
             let g = lerp(background_color_1.y, background_color_2.y, h);
             let b = lerp(background_color_1.z, background_color_2.z, h);
-            return Vec3{x:r, y:g, z:b};
+            return (Vec3{x:r, y:g, z:b}, hit);
             //return Vec3{x:0.0f32, y:0.0f32, z:0.0f32};
-        }
-
-        //Check if max bounces has been reached
-        if bounce_depth >= MAX_BOUNCE_DEPTH {
-            return Vec3{x:0.0, y:0.0, z:0.0}
         }
 
         //check if hit
         if sdf_val < EPSILON {
             hit = true;
 
-            //closest object found
-            if bounce_depth < MAX_BOUNCE_DEPTH {
-                //find normal
-                let distc = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
-                let distx = objects.Get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
-                let disty = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z}).dist;                  
-                let distz = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON}).dist;
-                let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON});
-                
-                
-                let indirect_color = get_indirect_lightning(
-                    ray_pos,
-                    u_vec,
-                    &objects,
-                    bounce_depth + 1u8,
-                    normal,
-                    reflectance,
-                );
-
-                let direct_color = get_direct_lightning(
-                    ray_pos,
-                    u_vec,
-                    &objects,
-                    normal,
-                );
-
-                
-                //let direct_color = Vec3{x: 0.0, y:0.0, z:0.0};
-                let total_color = direct_color;// + direct_color;
-
-                return total_color;
+            //Check if max bounces has been reached
+            if bounce_depth >= MAX_BOUNCE_DEPTH {
+                hit = true;
+                return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
             }
+    
+            //find normal
+            let distc = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
+            let distx = objects.Get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
+            let disty = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z}).dist;                  
+            let distz = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON}).dist;
+            let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON});
+            
+            
+            let indirect_color = get_indirect_lightning(
+                ray_pos,
+                u_vec,
+                &objects,
+                bounce_depth + 1u8,
+                normal,
+                reflectance,
+            );
+
+            let direct_color = get_direct_lightning(
+                ray_pos,
+                u_vec,
+                &objects,
+                normal,
+            );
+
+            
+            //let direct_color = Vec3{x: 0.0, y:0.0, z:0.0};
+            //total_color = material_color.vec_mult(&(direct_color + indirect_color)); 
+            total_color = direct_color + indirect_color; 
+            //gamma correction
+            //total_color = Vec3{x:total_color.x.powf(0.45), y:total_color.y.powf(0.45), z:total_color.z.powf(0.45)};
+            return (total_color, hit);
         }
     }
-    return color
+    return (total_color, hit);
 }
 
 struct surfacepoint {
@@ -408,18 +420,20 @@ impl Op {
     }
 }
 
-const EPSILON: f32 = 0.0001;
+const EPSILON: f32 = 0.01;
+const MAX_BOUNCE_DEPTH: u8 = 3;
+const MAX_DISTANCE: f32 = 63.0;
 
 fn main() {
     let now = Instant::now();
 
-    const NUM_OF_SAMPLES: i32 = 100;
+    const NUM_OF_SAMPLES: i32 = 500;
 
-    const NUM_BIN_WIDTH: usize = 256;
+    const NUM_BIN_WIDTH: usize = 640;
     const CANVAS_WIDTH: f32 = 1.0;
     let bin_width = CANVAS_WIDTH / (NUM_BIN_WIDTH as f32);
 
-    const NUM_BIN_HEIGHT: usize = 256;
+    const NUM_BIN_HEIGHT: usize = 640;
     const CANVAS_HEIGHT: f32 = 1.0;
     let bin_height = CANVAS_HEIGHT / (NUM_BIN_HEIGHT as f32);
 
@@ -434,8 +448,8 @@ fn main() {
     };
 
     // let snow_man = Union(
-    //     Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0})),
-    //     Box::new(Move(Box::new(Scale(Box::new(Sphere(Vec3{x:0.0, y:255.0, z:0.0})), 0.5)), Vec3{x:0., y:-1.2, z:0.0})));
+    //     Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1.0)),
+    //     Box::new(Move(Box::new(Scale(Box::new(Sphere(Vec3{x:0.0, y:255.0, z:0.0}, 1.0)), 0.5)), Vec3{x:0., y:-1.2, z:0.0})));
 
     // let objects = Union(
     //     Box::new(snow_man.clone()),
@@ -446,13 +460,18 @@ fn main() {
     // );
 
     let mut room = Cut(
-        Box::new(Cube(Vec3{x:10.0, y:1.0, z:1.0}, Vec3{x:255.0, y:0.0, z:0.0}, 1.0)),
-        Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:0.9, z:0.9}, Vec3{x:255.0, y:0.0, z:0.0}, 1.0)), Vec3{x:-1.1, y:0.0, z:0.0}))
+        Box::new(Cube(Vec3{x:10.0, y:1.0, z:1.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),
+        Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:0.9, z:0.9}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)), Vec3{x:-1.1, y:0.0, z:0.0}))
     );
     
     room = Cut(
         Box::new(room.clone()),
-        Box::new(Move(Box::new(Cube(Vec3{x:0.3, y:0.3, z:0.3}, Vec3{x:255.0, y:0.0, z:0.0}, 1.0)), Vec3{x:0.0, y:-0.3, z:-0.9}))
+        Box::new(Move(Box::new(Cube(Vec3{x:0.3, y:0.3, z:0.3}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)), Vec3{x:0.0, y:-0.3, z:-0.9}))
+    );
+
+    room = Union(
+        Box::new(room.clone()),
+        Box::new(Move(Box::new(Scale(Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),0.2)), Vec3{x:0.0, y:0.3, z:0.0}))
     );
 
     let objects = Box::new(Move(Box::new(room), Vec3{x:3.0, y:0.0, z:0.1}));
@@ -483,27 +502,32 @@ fn main() {
             let u_vector = Vec3::normalize(&vector);
 
             let mut color = Vec3{x:0.0, y:0.0, z:0.0};
-
+            let mut tcolor = Vec3{x:0.0, y:0.0, z:0.0};
+            
             for k in 0..NUM_OF_SAMPLES {
-                color = color + ray(
+                (color, _) = ray(
                     eye_pos,
                     u_vector,
                     &objects,
                     0u8,
                 );
+                tcolor = tcolor + color
             }
-            color = color/NUM_OF_SAMPLES as f32;
-
-            image_array[[i, j, 0]] = 255.0f32.min(color.x) as u8;
-            image_array[[i, j, 1]] = 255.0f32.min(color.y) as u8;
-            image_array[[i, j, 2]] = 255.0f32.min(color.z) as u8;
+            tcolor = tcolor/NUM_OF_SAMPLES as f32;
+            //gamma correction
+            //tcolor = Vec3{x:tcolor.x.powf(0.45), y:tcolor.y.powf(0.45), z:tcolor.z.powf(0.45)};
+            
+            
+            image_array[[i, j, 0]] = 255.0f32.min(tcolor.x) as u8;
+            image_array[[i, j, 1]] = 255.0f32.min(tcolor.y) as u8;
+            image_array[[i, j, 2]] = 255.0f32.min(tcolor.z) as u8;
         }
-        if i % 50 == 0 {
+        if i % 10 == 0 {
            println!("{}", (i as f32) / (NUM_BIN_WIDTH as f32))
         }
     }
     
-    array_to_image(image_array).save("picture2.png");
+    array_to_image(image_array).save("picture3.png");
 
     let elapsed = now.elapsed();
     println!("Total time: {:?}", elapsed);
