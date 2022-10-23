@@ -10,6 +10,7 @@ dependencies = [
  "image",
  "ndarray",
  "rand",
+ "rayon",
 ]
 
 [[package]]

@@ -1,11 +1,15 @@
+//extern crate image;
+//use image::DynamicImage::ImageRgb8;
 use image::RgbImage;
 use ndarray::{Array3};
 use std::time::Instant;
 use std::ops::{Add, Div, Mul, Sub, Neg};
 use std::cmp;
-use crate::Op::{Union, Cut, Move, Scale, Sphere, Cube, InfRep};
+use crate::Op::{Union, SmoothUnion, Cut, Move, Scale, Sphere, Cube, InfRep};
 use core::f32::consts::PI;
 use rand::prelude::*;
+use rayon::prelude::*;
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
@@ -181,15 +185,18 @@ fn lerp(a: f32, b: f32, h: f32) -> f32 {
     return a*h+b*(1.0f32-h)
 } 
 
+fn vec_to_image(img: Vec<Vec<Vec3>>, filename: &str) -> () {
+    let sizey = img.len() as u32;
+    let sizex = img[0].len() as u32;
+    let mut imgbuf = image::ImageBuffer::new(sizex, sizey);
 
-fn array_to_image(arr: Array3<u8>) -> RgbImage {
-    assert!(arr.is_standard_layout());
+    for (y, row) in img.iter().enumerate() {
+        for (x, pixel) in row.iter().enumerate() {
+            imgbuf.put_pixel(x as u32, y as u32, image::Rgb([pixel.x as u8, pixel.y as u8, pixel.z as u8]));
+        }
+    }
 
-    let (height, width, _) = arr.dim();
-    let raw = arr.into_raw_vec();
-
-    RgbImage::from_raw(width as u32, height as u32, raw)
-        .expect("container should have the right size for the image dimensions")
+    imgbuf.save(filename).unwrap();
 }
 
 fn get_indirect_lightning(
@@ -219,9 +226,9 @@ fn get_indirect_lightning(
     let p = 1.0 / (2.0*PI);
 
     let cos_theta = u_vector_rot.dot(&normal);
-    let BRDF = reflectance / PI;
+    let brdf = reflectance / PI;
 
-    let indirect_color = indirect_incoming * BRDF * cos_theta / p;
+    let indirect_color = indirect_incoming * brdf * cos_theta / p;
 
     return indirect_color
 }
@@ -246,7 +253,7 @@ fn get_shadow(
 }
 
 fn get_sun_point() -> Vec3 {
-    return Vec3{x:0.0, y:-100.0, z:-100.0}
+    return Vec3{x:-100.0, y:-100.0, z:-100.0}
 }
 
 fn get_direct_lightning(
@@ -276,7 +283,6 @@ fn ray(
 
     let mut ray_pos = start_pos.clone();
     let mut total_color = Vec3::zeros();
-    let mut intensity = 1.0f32;
     let mut hit: bool = false;
 
     let mut i=1.0f32;
@@ -290,7 +296,7 @@ fn ray(
         }
 
         //find the step length
-        let point = objects.Get_nearest_point(ray_pos);
+        let point = objects.get_nearest_point(ray_pos);
         let sdf_val = point.dist;
         let material_color = point.color;
         let reflectance = point.reflectance;
@@ -321,10 +327,10 @@ fn ray(
             }
     
             //find normal
-            let distc = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
-            let distx = objects.Get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
-            let disty = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z}).dist;                  
-            let distz = objects.Get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON}).dist;
+            let distc = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
+            let distx = objects.get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
+            let disty = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z}).dist;                  
+            let distz = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON}).dist;
             let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON});
             
             
@@ -348,15 +354,13 @@ fn ray(
             //let direct_color = Vec3{x: 0.0, y:0.0, z:0.0};
             //total_color = material_color.vec_mult(&(direct_color + indirect_color)); 
             total_color = direct_color + indirect_color; 
-            //gamma correction
-            //total_color = Vec3{x:total_color.x.powf(0.45), y:total_color.y.powf(0.45), z:total_color.z.powf(0.45)};
             return (total_color, hit);
         }
     }
     return (total_color, hit);
 }
 
-struct surfacepoint {
+struct Surfacepoint {
     dist: f32,
     color: Vec3,
     reflectance: f32,
@@ -365,6 +369,7 @@ struct surfacepoint {
 #[derive(Debug, Clone)]
 enum Op{
     Union(Box<Op>, Box<Op>),
+    SmoothUnion(Box<Op>, Box<Op>, f32),
     Cut(Box<Op>, Box<Op>),
     Sphere(Vec3, f32),
     Cube(Vec3, Vec3, f32),
@@ -374,11 +379,11 @@ enum Op{
 }
 
 impl Op { 
-    fn Get_nearest_point(&self, ray_pos: Vec3) -> surfacepoint { 
+    fn get_nearest_point(&self, ray_pos: Vec3) -> Surfacepoint { 
         match &self { 
             Self::Union(a, b) => {
-                let point_a = a.Get_nearest_point(ray_pos);
-                let point_b = b.Get_nearest_point(ray_pos);
+                let point_a = a.get_nearest_point(ray_pos);
+                let point_b = b.get_nearest_point(ray_pos);
 
                 if point_a.dist < point_b.dist {
                     return point_a
@@ -386,9 +391,22 @@ impl Op {
                     return point_b
                 }
             }
+            Self::SmoothUnion(a, b, k) => {
+                let point_a = a.get_nearest_point(ray_pos);
+                let point_b = b.get_nearest_point(ray_pos);
+                let da = point_a.dist;
+                let db = point_b.dist;
+                let ca = point_a.color;
+                let cb = point_b.color;
+                let ra = point_a.reflectance;
+                let rb = point_b.reflectance;
+
+                let h = (0.5+0.5*(db-da)/k).min(1.0).max(0.0);
+                return Surfacepoint{dist: (1.0-h)*db+h*da-k*h*(1.0-h), color: Vec3{x: lerp(ca.x,cb.x,h),y: lerp(ca.y,cb.y,h),z: lerp(ca.z,cb.z,h)}, reflectance: lerp(ra, rb, h)}
+            }
             Self::Cut(b, a) => {
-                let mut point_a = a.Get_nearest_point(ray_pos);
-                let mut point_b = b.Get_nearest_point(ray_pos);
+                let mut point_a = a.get_nearest_point(ray_pos);
+                let point_b = b.get_nearest_point(ray_pos);
                 point_a.dist *= -1.0;
                 if point_a.dist > point_b.dist { 
                     return point_a
@@ -397,44 +415,44 @@ impl Op {
                 }
             }
             Self::Sphere(color, reflectance) => {
-                return surfacepoint{dist: Vec3::len(&ray_pos)-1.0, color: *color, reflectance: *reflectance}
+                return Surfacepoint{dist: Vec3::len(&ray_pos)-1.0, color: *color, reflectance: *reflectance}
             }
             Self::Cube(size, color, reflectance) => {
                 let q = Vec3::abs(&ray_pos) - *size;
-                return surfacepoint{dist: Vec3::len(&Vec3{x:q.x.max(0.0), y:q.y.max(0.0), z:q.z.max(0.0)}) + ((q.y.max(q.z)).max(q.x)).min(0.0), color: *color, reflectance: *reflectance};
+                return Surfacepoint{dist: Vec3::len(&Vec3{x:q.x.max(0.0), y:q.y.max(0.0), z:q.z.max(0.0)}) + ((q.y.max(q.z)).max(q.x)).min(0.0), color: *color, reflectance: *reflectance};
             }
             Self::Move(a,vec) => {
-                return a.Get_nearest_point(ray_pos - *vec)
+                return a.get_nearest_point(ray_pos - *vec)
             }
             Self::Scale(a,scale) => {
-                let mut point_a = a.Get_nearest_point(ray_pos/ *scale);
+                let mut point_a = a.get_nearest_point(ray_pos/ *scale);
                 point_a.dist *= *scale;
                 return point_a
             }
             Self::InfRep(a, vec) => {
                 let q = Vec3::modulo(&(ray_pos + *vec*0.5), vec) - *vec*0.5;
                 //let q = Vec3::modulo(&ray_pos, &vec);
-                return a.Get_nearest_point(q)
+                return a.get_nearest_point(q)
             }
         }
     }
 }
 
-const EPSILON: f32 = 0.01;
+const EPSILON: f32 = 0.0001;
 const MAX_BOUNCE_DEPTH: u8 = 3;
 const MAX_DISTANCE: f32 = 63.0;
 
 fn main() {
     let now = Instant::now();
 
-    const NUM_OF_SAMPLES: i32 = 500;
+    const NUM_OF_SAMPLES: i32 = 1;
 
-    const NUM_BIN_WIDTH: usize = 640;
-    const CANVAS_WIDTH: f32 = 1.0;
+    const NUM_BIN_WIDTH: usize = 640*2;
+    const CANVAS_WIDTH: f32 = 2.0;
     let bin_width = CANVAS_WIDTH / (NUM_BIN_WIDTH as f32);
 
-    const NUM_BIN_HEIGHT: usize = 640;
-    const CANVAS_HEIGHT: f32 = 1.0;
+    const NUM_BIN_HEIGHT: usize = 640*2;
+    const CANVAS_HEIGHT: f32 = 2.0;
     let bin_height = CANVAS_HEIGHT / (NUM_BIN_HEIGHT as f32);
 
     let mut bin_pos_array: Array3<f32> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //x,y,z
@@ -447,39 +465,72 @@ fn main() {
         z: 0.0f32,
     };
 
-    // let snow_man = Union(
-    //     Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1.0)),
-    //     Box::new(Move(Box::new(Scale(Box::new(Sphere(Vec3{x:0.0, y:255.0, z:0.0}, 1.0)), 0.5)), Vec3{x:0., y:-1.2, z:0.0})));
+    //let mut objects = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0},1.0));
 
-    // let objects = Union(
-    //     Box::new(snow_man.clone()),
-    //     Box::new(Union(
-    //         Box::new(Move(Box::new(snow_man.clone()), Vec3{x:0., y:0., z:2.})), 
-    //         Box::new(Move(Box::new(Scale(Box::new(snow_man.clone()), 0.5)), Vec3{x:0., y:0., z:-1.5}))
-    //     ))
-    // );
+    if false { //room scene
+        let mut room = Cut(
+            Box::new(Cube(Vec3{x:10.0, y:1.0, z:1.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),
+            Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:0.9, z:0.9}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)), Vec3{x:-1.1, y:0.0, z:0.0}))
+        );
+        
+        room = Cut(
+            Box::new(room.clone()),
+            Box::new(Move(Box::new(Cube(Vec3{x:0.3, y:0.3, z:0.3}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)), Vec3{x:0.0, y:-0.3, z:-0.9}))
+        );
 
-    let mut room = Cut(
-        Box::new(Cube(Vec3{x:10.0, y:1.0, z:1.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),
-        Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:0.9, z:0.9}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)), Vec3{x:-1.1, y:0.0, z:0.0}))
+        room = Union(
+            Box::new(room.clone()),
+            Box::new(Move(Box::new(Scale(Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),0.2)), Vec3{x:0.0, y:0.3, z:0.0})),
+        );
+
+        let objects = Box::new(Move(Box::new(room), Vec3{x:3.0, y:0.0, z:0.1}));
+    }
+
+    if false { //Infballs scene
+        let mut objects = Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1.0));
+        objects = Box::new(InfRep(Box::new(*objects), Vec3{x:5.0, y:5.0, z:5.0}));
+        objects = Box::new(Move(Box::new(*objects), Vec3{x:5., y:-102.5, z:-102.5}));
+    }
+
+    //if false { //Menger Sponge
+    let mut cross_0 = Union(
+        Box::new(Union(
+            Box::new(Cube(Vec3{x:10000.0,y:1.,z:1.}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),
+            Box::new(Cube(Vec3{x:1.,y:10000.0,z:1.}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0))
+        )),
+        Box::new(Cube(Vec3{x:1.,y:1.,z:10000.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0))
     );
-    
-    room = Cut(
-        Box::new(room.clone()),
-        Box::new(Move(Box::new(Cube(Vec3{x:0.3, y:0.3, z:0.3}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)), Vec3{x:0.0, y:-0.3, z:-0.9}))
+    let layer_0 = Box::new(Move(Box::new(Cube(Vec3{x:1.,y:1.,z:1.}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),Vec3{x:0.0,y:2.0,z:2.0}));
+    let cross_1 = Box::new(Scale(Box::new(cross_0.clone()),0.333));
+    let layer_1 = Cut(
+        Box::new(*layer_0.clone()),
+        //Box::new(InfRep(Box::new(*cross_1.clone()), Vec3{x:2.0/(3.*i as f32), y:2.0/(3.*i as f32), z:2.0/(3.*i as f32)}))
+        Box::new(InfRep(Box::new(*cross_1.clone()), Vec3{x:-2.0, y:2.0, z:2.0}))
     );
-
-    room = Union(
-        Box::new(room.clone()),
-        Box::new(Move(Box::new(Scale(Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0)),0.2)), Vec3{x:0.0, y:0.3, z:0.0}))
+    let cross_2 = Box::new(Scale(Box::new(*cross_1.clone()),0.333));
+    let mut layer_2 = Cut(
+        Box::new(layer_1.clone()),
+        Box::new(InfRep(Box::new(*cross_2.clone()), Vec3{x:-0.666, y:0.666, z:0.666}))
     );
+    let cross_3 = Box::new(Scale(Box::new(*cross_2.clone()),0.333));
+    let mut layer_3 = Cut(
+        Box::new(layer_2.clone()),
+        Box::new(InfRep(Box::new(*cross_3.clone()), Vec3{x:-0.222, y:0.222, z:0.222}))
+    );
+    let cross_4 = Box::new(Scale(Box::new(*cross_3.clone()),0.333));
+    let mut layer_4 = Cut(
+        Box::new(layer_3.clone()),
+        Box::new(InfRep(Box::new(*cross_4.clone()), Vec3{x:-0.074, y:0.074, z:0.074}))
+    );
+    let cross_5 = Box::new(Scale(Box::new(*cross_4.clone()),0.333));
+    let mut layer_5 = Cut(
+        Box::new(layer_4.clone()),
+        Box::new(InfRep(Box::new(*cross_5.clone()), Vec3{x:-0.074/3., y:0.074/3., z:0.074/3.}))
+    );
+    let objects = Box::new(Move(Box::new(layer_5), Vec3{x:1.0, y:-2.3, z:-2.0}));
+    //}
 
-    let objects = Box::new(Move(Box::new(room), Vec3{x:3.0, y:0.0, z:0.1}));
 
-    // let objects = Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1.0));
-    //objects = Box::new(InfRep(Box::new(*objects), Vec3{x:5.0, y:5.0, z:5.0}));
-    //objects = Box::new(Move(Box::new(*objects), Vec3{x:5., y:-102.5, z:-102.5}));
-    
     //loop to find bin positions
     for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
         *v = match c {
@@ -490,21 +541,21 @@ fn main() {
         };
     }
 
-    //loop to shoot rays
-    for i in 0..NUM_BIN_WIDTH {
-        for j in 0..NUM_BIN_HEIGHT {
-            let x = bin_pos_array[[i, j, 0]]; //TODO must be possible to do in a better way.....
+    //loop to shoot rays parallell
+    let image_array: Vec<Vec<Vec3>> = (0..NUM_BIN_WIDTH).into_par_iter().map(|i| {
+        let row: Vec<Vec3> = (0..NUM_BIN_HEIGHT).into_par_iter().map(|j| {
+
+            let x = bin_pos_array[[i, j, 0]];
             let y = bin_pos_array[[i, j, 1]];
             let z = bin_pos_array[[i, j, 2]];
             let end_pos = Vec3{x:x, y:y, z:z};
-
             let vector = end_pos - eye_pos;
             let u_vector = Vec3::normalize(&vector);
 
             let mut color = Vec3{x:0.0, y:0.0, z:0.0};
             let mut tcolor = Vec3{x:0.0, y:0.0, z:0.0};
             
-            for k in 0..NUM_OF_SAMPLES {
+            for _k in 0..NUM_OF_SAMPLES {
                 (color, _) = ray(
                     eye_pos,
                     u_vector,
@@ -514,21 +565,16 @@ fn main() {
                 tcolor = tcolor + color
             }
             tcolor = tcolor/NUM_OF_SAMPLES as f32;
-            //gamma correction
-            //tcolor = Vec3{x:tcolor.x.powf(0.45), y:tcolor.y.powf(0.45), z:tcolor.z.powf(0.45)};
-            
-            
-            image_array[[i, j, 0]] = 255.0f32.min(tcolor.x) as u8;
-            image_array[[i, j, 1]] = 255.0f32.min(tcolor.y) as u8;
-            image_array[[i, j, 2]] = 255.0f32.min(tcolor.z) as u8;
-        }
+            tcolor
+        }).collect();
         if i % 10 == 0 {
            println!("{}", (i as f32) / (NUM_BIN_WIDTH as f32))
         }
-    }
-    
-    array_to_image(image_array).save("picture3.png");
+        row
+    }).collect();
 
+    vec_to_image(image_array, "picture2.png");
+        
     let elapsed = now.elapsed();
     println!("Total time: {:?}", elapsed);
 }
