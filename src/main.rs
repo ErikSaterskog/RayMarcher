@@ -57,10 +57,16 @@ fn ray(
     u_vec: Vec3,
     objects: &Op,
     bounce_depth: u8,
+    refractive_index: f32,
 ) -> (Vec3, bool) {
 
-    let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
-    let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
+    
+    // let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
+    // let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
+
+    let background_color_1 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
+    let background_color_2 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
+
 
     let mut ray_pos = start_pos.clone();
     let mut total_color = Vec3::zeros();
@@ -71,9 +77,9 @@ fn ray(
     while hit == false {
         i += 1;
         if i>1000 {
-            println!("Warning! #1");
+            //println!("Warning! #1");
             hit = true;
-            return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
+            return (Vec3{x:255.0, y:0.0, z:0.0}, hit)
         }
 
         //find the step length
@@ -83,9 +89,10 @@ fn ray(
         let reflectance = point.reflectance;
         let surface_model = point.surface_model;
         let emission_rate = point.emission_rate;
+        //let refractive_index = point.refractive_index;
 
-        //take the step
-        ray_pos = ray_pos + u_vec*sdf_val*STEP_LENGTH_MULTIPLIER;
+        //take the step   //TODO sdf abs new variable
+        ray_pos = ray_pos + u_vec*sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
         
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
@@ -100,13 +107,13 @@ fn ray(
         }
 
         //check if hit
-        if sdf_val < EPSILON {
+        if sdf_val.abs() < EPSILON {
             hit = true;
 
             //Check if max bounces has been reached
             if bounce_depth >= MAX_BOUNCE_DEPTH {
                 hit = true;
-                return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
+                return (Vec3{x:255.0, y:0.0, z:213.0}, hit)
             }
     
             //find normal
@@ -114,17 +121,19 @@ fn ray(
             let distx = objects.get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
             let disty = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z}).dist;                  
             let distz = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON}).dist;
-            let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON});
+            let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON})*sdf_val.signum();
             
             if SUN_LIGHT_METHOD == 1 {
                 let indirect_color = lighting::get_indirect_lighting(
                     ray_pos,
                     u_vec,
                     &objects,
+                    refractive_index,
                     bounce_depth + 1u8,
                     normal,
                     reflectance,
                     surface_model,
+                    point.refractive_index
                 );
 
                 let direct_color = get_direct_lighting(
@@ -142,6 +151,7 @@ fn ray(
                 }
                 if surface_model == 3 {
                     //refreaction and reflection
+                    total_color = indirect_color;
                 }
             }
 
@@ -151,10 +161,12 @@ fn ray(
                         ray_pos,
                         u_vec,
                         &objects,
+                        refractive_index,
                         bounce_depth + 1u8,
                         normal,
                         reflectance,
                         surface_model,
+                        point.refractive_index,
                     );
 
                     if surface_model == 1 {
@@ -165,6 +177,7 @@ fn ray(
                     }
                     if surface_model == 3 {
                         //refraction and reflection
+                        total_color = indirect_color;
                     }
                 } else {
                     total_color = material_color*emission_rate
@@ -177,12 +190,12 @@ fn ray(
 }
 
 
-
+//TODO: rays start from an area, to create depth of field
 
 const EPSILON: f32 = 0.0001;
-const MAX_BOUNCE_DEPTH: u8 = 5;
+const MAX_BOUNCE_DEPTH: u8 = 10;
 const MAX_DISTANCE: f32 = 50.0;
-const NUM_OF_SAMPLES: i32 = 5;  
+const NUM_OF_SAMPLES: i32 = 500;  
 
 // const NUM_BIN_WIDTH: usize = 1000;
 // const CANVAS_WIDTH: f32 = 1.0;
@@ -197,8 +210,9 @@ const NUM_BIN_HEIGHT: usize = 1920;
 const CANVAS_HEIGHT: f32 = 2.0;
 
 const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 1;
+const SUN_LIGHT_METHOD: i8 = 2;
 
+const START_REFRACTIVE_INDEX: f32 = 1.0;
 
 
 fn main() {
@@ -231,7 +245,7 @@ fn main() {
         };
     }
 
-    //loop to shoot rays parallell
+    //loop to shoot rays parallell     /into_par_iter().map
     let image_array: Vec<Vec<Vec3>> = (0..NUM_BIN_WIDTH).into_par_iter().map(|i| {
         let row: Vec<Vec3> = (0..NUM_BIN_HEIGHT).into_par_iter().map(|j| {
 
@@ -253,6 +267,7 @@ fn main() {
                     u_vector,
                     &objects,
                     0u8,
+                    START_REFRACTIVE_INDEX,
                 );
                 tcolor = tcolor + color
             }
@@ -267,7 +282,7 @@ fn main() {
         row
     }).collect();
 
-    vec_to_image(image_array, "picture0.png");
+    vec_to_image(image_array, "picture1.png");
         
     let elapsed = now.elapsed();
     println!("Total time: {:?}", elapsed);

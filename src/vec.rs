@@ -31,7 +31,7 @@ impl Vec3 {
         Vec3 {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
-            z: self.z * other.y - self.y * other.x,
+            z: self.x * other.y - self.y * other.x,
         }
     }
 
@@ -98,8 +98,8 @@ impl Vec3 {
         n.scale(2.0 * (n.dot(v))) - *v
     }
 
-    pub fn rot_vector(k: &Vec3, v: &Vec3, angle: f32) -> Vec3 {
-        return *v*angle.cos()+(k.cross(v))*angle.sin()+*k*(k.dot(v))*(1.0-angle.cos())
+    pub fn rot_vector(k: &Vec3, v: &Vec3, angle: f32) -> Vec3 { //angle cos can eb calced before
+        return *v*angle.cos() + k.cross(v)*angle.sin() + *k*(k.dot(v))*(1.0-angle.cos())
     }
 
     // pub fn hemisphere_bounce(normal: &Vec3, v: &Vec3) -> Vec3 {
