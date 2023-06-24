@@ -61,11 +61,11 @@ fn ray(
 ) -> (Vec3, bool) {
 
     
-    // let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
-    // let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
+    let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
+    let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
 
-    let background_color_1 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
-    let background_color_2 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
+    //let background_color_1 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
+    //let background_color_2 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
 
 
     let mut ray_pos = start_pos.clone();
@@ -89,7 +89,7 @@ fn ray(
         let reflectance = point.reflectance;
         let surface_model = point.surface_model;
         let emission_rate = point.emission_rate;
-        //let refractive_index = point.refractive_index;
+        let mut new_refractive_index = point.refractive_index;
 
         //take the step   //TODO sdf abs new variable
         ray_pos = ray_pos + u_vec*sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
@@ -113,7 +113,7 @@ fn ray(
             //Check if max bounces has been reached
             if bounce_depth >= MAX_BOUNCE_DEPTH {
                 hit = true;
-                return (Vec3{x:255.0, y:0.0, z:213.0}, hit)
+                return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
             }
     
             //find normal
@@ -124,6 +124,9 @@ fn ray(
             let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON})*sdf_val.signum();
             
             if SUN_LIGHT_METHOD == 1 {
+                if refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
+                    new_refractive_index = START_REFRACTIVE_INDEX;
+                }
                 let indirect_color = lighting::get_indirect_lighting(
                     ray_pos,
                     u_vec,
@@ -133,7 +136,7 @@ fn ray(
                     normal,
                     reflectance,
                     surface_model,
-                    point.refractive_index
+                    new_refractive_index
                 );
 
                 let direct_color = get_direct_lighting(
@@ -193,9 +196,11 @@ fn ray(
 //TODO: rays start from an area, to create depth of field
 
 const EPSILON: f32 = 0.0001;
-const MAX_BOUNCE_DEPTH: u8 = 10;
-const MAX_DISTANCE: f32 = 50.0;
-const NUM_OF_SAMPLES: i32 = 500;  
+const MAX_BOUNCE_DEPTH: u8 = 4;
+const MAX_DISTANCE: f32 = 20.0;
+const NUM_OF_SAMPLES: i32 = 20;  
+const DEPTH_OF_FIELD: bool = false;
+const DEPTH_OF_FIELD_CONST: f32 = 0.05;
 
 // const NUM_BIN_WIDTH: usize = 1000;
 // const CANVAS_WIDTH: f32 = 1.0;
@@ -204,13 +209,15 @@ const NUM_OF_SAMPLES: i32 = 500;
 // const CANVAS_HEIGHT: f32 = 1.0;
 
 const NUM_BIN_WIDTH: usize = 1080;
+//const NUM_BIN_WIDTH: usize = 720;
 const CANVAS_WIDTH: f32 = 1.123;
 
 const NUM_BIN_HEIGHT: usize = 1920;
+//const NUM_BIN_HEIGHT: usize = 1280;
 const CANVAS_HEIGHT: f32 = 2.0;
 
 const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 2;
+const SUN_LIGHT_METHOD: i8 = 1;
 
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
@@ -260,7 +267,12 @@ fn main() {
             let mut tcolor = Vec3{x:0.0, y:0.0, z:0.0};
             
             for _k in 0..NUM_OF_SAMPLES {
-                let vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                let mut vector = Vec3::zeros();  //TODO remove this line
+                if DEPTH_OF_FIELD == true {
+                    vector = end_pos - Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST, z:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST} + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                } else {
+                    vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                }
                 let u_vector = Vec3::normalize(&vector);
                 (color, _) = ray(
                     eye_pos,

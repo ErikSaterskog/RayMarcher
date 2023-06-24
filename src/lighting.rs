@@ -64,7 +64,7 @@ pub fn get_indirect_lighting(
         let normal_dot_u=-Vec3::dot(&normal, &u_vec);
         let theta1 = (normal_dot_u/(Vec3::len(&u_vec))).acos();
         let num = theta1.sin()*current_refractive_index/new_refractive_index;     //Todo: Get surroundings refractive_index
-        if num > 1.0 || (rand::random::<f32>()>0.7 && current_refractive_index < new_refractive_index) {
+        if num > 1.0 {//|| (rand::random::<f32>()>0.7 && current_refractive_index < new_refractive_index) {
             //Total reflection
             u_vector_rot = -Vec3::rot_vector180(&normal, &u_vec);
         } else {
@@ -126,6 +126,6 @@ pub fn get_direct_lighting(
     let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
     let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
     let shadow = get_shadow(start_pos+normal*EPSILON*10., light_u_vec, objects);
-    let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow;
+    let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow * 0.8;  //OBS 0.8 lite wierd
     return direct_color
 }

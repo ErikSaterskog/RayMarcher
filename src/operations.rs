@@ -1,5 +1,5 @@
 
-use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, Scale, Sphere, Cube, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ};
+use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ};
 use crate::lerp;
 use crate::vec::Vec2;
 use crate::vec::Vec3;
@@ -25,6 +25,7 @@ pub enum Op{
     CappedCone(f32, f32, f32, Vec3, f32, i8, f32, f32),
     Ellipsoid(Vec3, Vec3, f32, i8, f32, f32),
     Line(Vec3, Vec3, f32, Vec3, f32, i8, f32, f32),
+    Plane(f32, Vec3, f32, i8, f32, f32),
     Move(Box<Op>, Vec3),
     RotateY(Box<Op>, f32),
     Scale(Box<Op>, f32),
@@ -124,6 +125,9 @@ impl Op {
               let ba = *b - *a;
               let h = (Vec3::dot(&pa,&ba) / Vec3::dot(&ba,&ba)).max(0.0).min(1.0);
               return Surfacepoint{dist: Vec3::len(&(pa - ba*h)) - r, color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index};
+            }
+            Self::Plane(h, color, reflectance, surface_model, emission_rate, refractive_index) => {
+                return Surfacepoint{dist: h-ray_pos.y, color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index};
             }
             Self::Move(a,vec) => {
                 return a.get_nearest_point(ray_pos - *vec)
