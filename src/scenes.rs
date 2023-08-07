@@ -13,8 +13,10 @@ use crate::Op::Ellipsoid;
 use crate::Op::Line;
 use crate::Op::Plane;
 use crate::Op::RotateY;
+use crate::Op::RotateZ;
 use crate::Op::InfRep;
 use crate::Op::MirrorZ;
+use crate::Op::SwirlY;
 
 use core::f32::consts::PI;
 
@@ -312,10 +314,10 @@ use crate::vec::Vec3;
 //     let mut plane = Box::new(Plane(-1.0, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
 //     //let mut plane = Box::new(Cube(Vec3{x:100.0, y:1.0, z:100.0}, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
     
-//     //Glass box
+//     //Glass cube
 //     let mut cube = Box::new(Cube(Vec3{x:1.0, y:1.0, z:1.0}, Vec3{x:0.0, y:255.0, z:0.0}, 1.0, 3, 0.0, 1.5));
 //     cube = Box::new(Scale(Box::new(*cube),0.35));
-//     cube = Box::new(Move(Box::new(*cube),Vec3{x:-1.0, y:-1.36, z:1.5}));
+//     cube = Box::new(Move(Box::new(*cube),Vec3{x:-1.0, y:-1.5, z:1.2}));
 
 //     //Glass sphere
 //     let mut sphere1 = Box::new(Sphere(Vec3{x:0.0, y:255.0, z:0.0}, 1.0, 3, 0.0, 1.5));
@@ -347,47 +349,7 @@ use crate::vec::Vec3;
 //     return Box::new(objects)
 // }
 
-//depth of field testing
-// pub fn scene() -> Box<Op> {
-//     //Plane
-//     let mut plane = Box::new(Plane(0.0, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
-//     //let mut plane = Box::new(Cube(Vec3{x:100.0, y:1.0, z:100.0}, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
-    
 
-//     //red line
-//     let mut line1 = Box::new(Line(Vec3{x:-10.0, y:0.0, z:-1.0}, Vec3{x:10.0, y:0.0, z:-1.0}, 0.5, Vec3{x:255.0, y:0.0, z:0.0}, 1.0, 1, 0.0, 1.5));
-//     line1 = Box::new(Scale(Box::new(*line1),1.0));
-//     line1 = Box::new(Move(Box::new(*line1),Vec3{x:0.0, y:0.0, z:0.0}));
-
-//     //green line
-//     let mut line2 = Box::new(Line(Vec3{x:-10.0, y:0.0, z:0.0}, Vec3{x:10.0, y:0.0, z:0.0}, 0.5, Vec3{x:0.0, y:255.0, z:0.0}, 1.0, 1, 0.0, 1.5));
-//     line2 = Box::new(Scale(Box::new(*line2),1.0));
-//     line2 = Box::new(Move(Box::new(*line2),Vec3{x:0.0, y:0.0, z:0.0}));
-
-//     //blue line
-//     let mut line3 = Box::new(Line(Vec3{x:-10.0, y:0.0, z:1.0}, Vec3{x:10.0, y:0.0, z:1.0}, 0.5, Vec3{x:0.0, y:0.0, z:255.0}, 1.0, 1, 0.0, 1.5));
-//     line3 = Box::new(Scale(Box::new(*line3),1.0));
-//     line3 = Box::new(Move(Box::new(*line3),Vec3{x:0.0, y:0.0, z:0.0}));
-
-//     //Glass sphere
-//     let mut sphere = Box::new(Sphere(Vec3{x:0.0, y:255.0, z:0.0}, 1.0, 3, 0.0, 1.5));
-//     sphere = Box::new(Scale(Box::new(*sphere),0.1));
-//     sphere = Box::new(Move(Box::new(*sphere),Vec3{x:1.0, y:-0.6, z:0.0}));
-
-//     let mut objects = Union(
-//         Box::new(*plane.clone()),
-//         Box::new(Union(
-//             Box::new(*line1.clone()),
-//             Box::new(Union(
-//                 Box::new(*line2.clone()),
-//                 Box::new(Union(
-//                     Box::new(*line3.clone()),
-//                     Box::new(*sphere.clone()),
-//     )))))));
-
-//     objects = *Box::new(Move(Box::new(objects.clone()), Vec3{x:0.0, y:0.7, z:0.0}));
-//     return Box::new(objects)
-// }
 
 //Glass on table
 // pub fn scene() -> Box<Op> {
@@ -445,7 +407,7 @@ use crate::vec::Vec3;
 pub fn scene() -> Box<Op> {
     
     let floor_size: f32 = 0.2;
-    let room_height: f32 = 5.0;
+    let room_height: f32 = 6.0;
     let room_depth: f32 = 15.0;
     let room_width: f32 = 7.0;
     //Floor
@@ -481,7 +443,7 @@ pub fn scene() -> Box<Op> {
         Box::new(*skylight),
     ));
     
-    let mut room = Box::new(Cut(
+    let room = Box::new(Cut(
         Box::new(*room1),
         Box::new(*cutter),
     ));
@@ -490,11 +452,11 @@ pub fn scene() -> Box<Op> {
     //Round pillars
     let mut pillar_top = Box::new(CappedCone(0.15, 0.5, 0.5, Vec3{x: 255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0));
     pillar_top = Box::new(Move(Box::new(*pillar_top), Vec3{x:0.0, y:-room_height/2.0, z:0.0}));
-    let mut pillar_mid = Box::new(CappedCone(room_height/2.0, 0.4, 0.4, Vec3{x: 255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0));
-    let mut pillar_bot = Box::new(CappedCone(0.2, 0.5, 0.5, Vec3{x: 255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0));
+    let pillar_mid = Box::new(CappedCone(room_height/2.0, 0.4, 0.4, Vec3{x: 255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0));
+    let pillar_bot = Box::new(CappedCone(0.2, 0.5, 0.5, Vec3{x: 255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0));
     
     //Assembly - Pillar
-    let mut pillar = Box::new(Union(
+    let pillar = Box::new(Union(
         Box::new(*pillar_top),
         Box::new(Union(
             Box::new(*pillar_mid),
@@ -504,14 +466,41 @@ pub fn scene() -> Box<Op> {
     let mut pillars = Box::new(InfRep(Box::new(*pillar), Vec3{x:1.8, y:1000.0, z:4.2}));
     pillars = Box::new(Move(Box::new(*pillars), Vec3{x:-2.0, y:0.0, z:-2.1}));
 
+    // //Plant
+    // let mut stem = Box::new(Line(Vec3{x:0.4, y:0.0, z:0.0}, Vec3{x:0.4, y:-room_height/2.0, z:0.0}, 0.2, Vec3{x:100.0, y:255.0, z:100.0}, 1.0, 1, 0.0, 1.0));
+    // stem = Box::new(SwirlY(Box::new(*stem), 6.0));
+    // stem = Box::new(Move(Box::new(*stem), Vec3{x:-2.0+1.8*2.0, y:0.0, z:2.1}));
+    
+    // //Altar
+    // let mut altar_base = Box::new(Cube(Vec3{x:0.2, y:0.5, z:0.2}, Vec3{x:200.0, y:100.0, z:100.0}, 1.0, 1, 0.0, 1.0));
+    // altar_base = Box::new(SwirlY(Box::new(*altar_base), 4.0));
+    // altar_base = Box::new(Move(Box::new(*altar_base), Vec3{x:2.0, y:-0.5, z:0.0}));
+    
+    // let mut altar_sphere = Box::new(Sphere(Vec3{x:200.0, y:10.0, z:10.0}, 1.0, 3, 0.0, 1.0));
+    // altar_sphere = Box::new(Scale(Box::new(*altar_sphere), 0.5));
+    // altar_sphere = Box::new(Move(Box::new(*altar_sphere), Vec3{x:2.0, y:-1.25, z:0.0}));
+    
+    // //Altar Assembly
+    // let mut altar = Box::new(Union(
+    //     Box::new(*altar_base),
+    //     Box::new(*altar_sphere),
+    // ));
+
+    let mut sphere = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 1.0, 1.0));
+    sphere = Box::new(Scale(Box::new(*sphere), 0.75));
+    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.0, y:-1.25, z:0.0}));
 
     //Assembly
     let mut objects = Box::new(Union(
         Box::new(*room),
         Box::new(Union(
             Box::new(*tiles),
-            Box::new(*pillars),
-    ))));
+            Box::new(Union(
+                Box::new(*pillars),
+                Box::new(*sphere),
+                    //Box::new(*stem),  
+                    //Box::new(*altar),  
+    ))))));
 
     //Camera positioning
     objects = Box::new(Move(Box::new(*objects), Vec3{x:3.0, y:1.0, z:0.0}));
@@ -519,10 +508,29 @@ pub fn scene() -> Box<Op> {
     
     return Box::new(*objects)
     
-    
-
-
-
-
-
 }
+
+//swirl test
+// pub fn scene() -> Box<Op> {
+//     //Step length modifier = 0.5
+
+//     let plane = Box::new(Plane(1.0, Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
+//     let mut cube = Box::new(Cube(Vec3{x:0.6, y:2.0, z:0.6}, Vec3{x:240.0, y:140.0, z:140.0}, 1.0, 1, 0.0, 0.0));
+//     cube = Box::new(Move(Box::new(*cube), Vec3{x:0.0, y:-1.0, z:0.0}));
+//     cube = Box::new(SwirlY(Box::new(*cube),2.0));
+
+//     //Assembly
+//     let mut objects = Box::new(Union(
+//         Box::new(*cube),
+//         Box::new(*plane),
+//     ));
+
+//     //Camera positioning
+//     objects = Box::new(RotateZ(Box::new(*objects),-0.7));
+//     objects = Box::new(Move(Box::new(*objects), Vec3{x:6.0, y:0.0, z:0.0}));
+    
+    
+//     return Box::new(*objects)
+    
+// }
+

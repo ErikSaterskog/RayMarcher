@@ -19,14 +19,14 @@ use crate::lighting::get_indirect_lighting;
 
 mod operations;
 use crate::operations::Op;
-use crate::Op::Move;
-use crate::Op::Scale;
-use crate::Op::SinDistortHeight;
-use crate::Op::Sphere;
-use crate::Op::Cube;
-use crate::Op::CappedCone;
-use crate::Op::Line;
-use crate::Op::RotateY;
+// use crate::Op::Move;
+// use crate::Op::Scale;
+// use crate::Op::SinDistortHeight;
+// use crate::Op::Sphere;
+// use crate::Op::Cube;
+// use crate::Op::CappedCone;
+// use crate::Op::Line;
+// use crate::Op::RotateY;
 
 mod scenes;
 use crate::scenes::scene;
@@ -58,14 +58,10 @@ fn ray(
     objects: &Op,
     bounce_depth: u8,
     refractive_index: f32,
+    BACKGROUND_COLOR_1: Vec3,
+    BACKGROUND_COLOR_2: Vec3,
+    FOG_COLOR: Vec3,
 ) -> (Vec3, bool) {
-
-    
-    let background_color_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
-    let background_color_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
-
-    //let background_color_1 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
-    //let background_color_2 = Vec3{x: 0.0f32, y: 0.0f32, z:0.0f32};
 
 
     let mut ray_pos = start_pos.clone();
@@ -93,15 +89,41 @@ fn ray(
 
         //take the step   //TODO sdf abs new variable
         ray_pos = ray_pos + u_vec*sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
-        
+        //Check if fog scatter
+        if FOG {
+            if SUN_LIGHT_METHOD == 2{   //TODO, implement for 1 also
+                if rand::random::<f32>()*sdf_val.abs()*STEP_LENGTH_MULTIPLIER < FOG_DENSITY {
+                    hit = true;
+                    let normal = Vec3{x: 0.0, y: 0.0, z: 0.0};
+                    let indirect_color = lighting::get_indirect_lighting(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        refractive_index,
+                        bounce_depth + 1u8,
+                        normal,
+                        1.0f32,
+                        4i8,
+                        point.refractive_index,
+                        BACKGROUND_COLOR_1,
+                        BACKGROUND_COLOR_2,
+                        FOG_COLOR,
+                    );
+                    total_color = (FOG_COLOR/255.).vec_mult(&(indirect_color));  
+                    return (total_color,hit)
+                }
+            }
+        }
+
+
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
             hit = false;
             let h = (0.0f32).max(u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
-            let r = lerp(background_color_1.x, background_color_2.x, h);
-            let g = lerp(background_color_1.y, background_color_2.y, h);
-            let b = lerp(background_color_1.z, background_color_2.z, h);
+            let r = lerp(BACKGROUND_COLOR_1.x, BACKGROUND_COLOR_2.x, h);
+            let g = lerp(BACKGROUND_COLOR_1.y, BACKGROUND_COLOR_2.y, h);
+            let b = lerp(BACKGROUND_COLOR_1.z, BACKGROUND_COLOR_2.z, h);
             return (Vec3{x:r, y:g, z:b}, hit);
             //return (Vec3{x:0.0f32, y:0.0f32, z:0.0f32}, hit);
         }
@@ -136,7 +158,10 @@ fn ray(
                     normal,
                     reflectance,
                     surface_model,
-                    new_refractive_index
+                    new_refractive_index,
+                    BACKGROUND_COLOR_1,
+                    BACKGROUND_COLOR_2,
+                    FOG_COLOR,
                 );
 
                 let direct_color = get_direct_lighting(
@@ -158,7 +183,7 @@ fn ray(
                 }
             }
 
-            if SUN_LIGHT_METHOD == 2 {  //TODO vid sista studsen så gör man en ray mot ljuskällan
+            if SUN_LIGHT_METHOD == 2 { 
                 if emission_rate < 0.001 {
                     let indirect_color = lighting::get_indirect_lighting(
                         ray_pos,
@@ -170,6 +195,9 @@ fn ray(
                         reflectance,
                         surface_model,
                         point.refractive_index,
+                        BACKGROUND_COLOR_1,
+                        BACKGROUND_COLOR_2,
+                        FOG_COLOR,
                     );
 
                     if surface_model == 1 {
@@ -194,13 +222,18 @@ fn ray(
 
 
 //TODO: rays start from an area, to create depth of field
+//let BACKGROUND_COLOR_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
+//let BACKGROUND_COLOR_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
 
-const EPSILON: f32 = 0.0001;
-const MAX_BOUNCE_DEPTH: u8 = 4;
-const MAX_DISTANCE: f32 = 20.0;
-const NUM_OF_SAMPLES: i32 = 20;  
+const EPSILON: f32 = 0.001;
+const MAX_BOUNCE_DEPTH: u8 = 20;
+const MAX_DISTANCE: f32 = 50.0;
+const NUM_OF_SAMPLES: i32 = 50;  
 const DEPTH_OF_FIELD: bool = false;
 const DEPTH_OF_FIELD_CONST: f32 = 0.05;
+const FOG: bool = true;
+const FOG_DENSITY: f32 = 0.1;
+
 
 // const NUM_BIN_WIDTH: usize = 1000;
 // const CANVAS_WIDTH: f32 = 1.0;
@@ -208,16 +241,16 @@ const DEPTH_OF_FIELD_CONST: f32 = 0.05;
 // const NUM_BIN_HEIGHT: usize = 1000;
 // const CANVAS_HEIGHT: f32 = 1.0;
 
-const NUM_BIN_WIDTH: usize = 1080;
-//const NUM_BIN_WIDTH: usize = 720;
+const NUM_BIN_WIDTH: usize = 1080/2;
+//const NUM_BIN_WIDTH: usize = 720/2;
 const CANVAS_WIDTH: f32 = 1.123;
 
-const NUM_BIN_HEIGHT: usize = 1920;
-//const NUM_BIN_HEIGHT: usize = 1280;
+const NUM_BIN_HEIGHT: usize = 1920/2;
+//const NUM_BIN_HEIGHT: usize = 1280/2;
 const CANVAS_HEIGHT: f32 = 2.0;
 
-const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 1;
+const STEP_LENGTH_MULTIPLIER: f32 = 0.9;
+const SUN_LIGHT_METHOD: i8 = 2;
 
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
@@ -240,8 +273,24 @@ fn main() {
         z: 0.0f32,
     };
 
-    let objects = scene();
+    let FOG_COLOR: Vec3 = Vec3{
+        x: 255.0,
+        y: 255.0,
+        z: 255.0,
+    };
+    let BACKGROUND_COLOR_1: Vec3 = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    let BACKGROUND_COLOR_2: Vec3 = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
 
+    let objects = scene();
+    
     //loop to find bin positions
     for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
         *v = match c {
@@ -280,6 +329,9 @@ fn main() {
                     &objects,
                     0u8,
                     START_REFRACTIVE_INDEX,
+                    BACKGROUND_COLOR_1,
+                    BACKGROUND_COLOR_2,
+                    FOG_COLOR,
                 );
                 tcolor = tcolor + color
             }

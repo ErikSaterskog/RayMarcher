@@ -116,9 +116,17 @@ impl Vec3 {
     //     return output
     // }
 
-    pub fn hemisphere_bounce(normal: &Vec3, v: &Vec3) -> Vec3 {
+    pub fn hemisphere_bounce(normal: &Vec3) -> Vec3 {
         let mut ray_out = Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*2.0-Vec3{x:1.0, y:1.0, z:1.0};
         while ray_out.dot(&ray_out) > 1.0 || normal.dot(&ray_out) < 0.0 {
+            ray_out = Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*2.0-Vec3{x:1.0, y:1.0, z:1.0};
+        } 
+        Vec3::normalize(&ray_out)
+    }
+
+    pub fn sphere_bounce() -> Vec3 {
+        let mut ray_out = Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*2.0-Vec3{x:1.0, y:1.0, z:1.0};
+        while ray_out.dot(&ray_out) > 1.0 {
             ray_out = Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*2.0-Vec3{x:1.0, y:1.0, z:1.0};
         } 
         Vec3::normalize(&ray_out)
@@ -142,6 +150,14 @@ impl Vec3 {
             x: v.x*angle1.cos() + v.z*angle1.sin(),
             y: v.y,
             z: -v.x*angle1.sin() + v.z*angle1.cos(),
+        }
+    }
+    
+    pub fn rotate_z(v: &Vec3, angle1: f32) -> Vec3 {
+        Vec3 {
+            x: v.x*angle1.cos() + v.y*angle1.sin(),
+            y: -v.x*angle1.sin() + v.y*angle1.cos(),
+            z: v.z,
         }
     }
 

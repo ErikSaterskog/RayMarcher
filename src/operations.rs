@@ -1,5 +1,5 @@
 
-use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ};
+use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, RotateZ, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
 use crate::lerp;
 use crate::vec::Vec2;
 use crate::vec::Vec3;
@@ -28,10 +28,12 @@ pub enum Op{
     Plane(f32, Vec3, f32, i8, f32, f32),
     Move(Box<Op>, Vec3),
     RotateY(Box<Op>, f32),
+    RotateZ(Box<Op>, f32),
     Scale(Box<Op>, f32),
     InfRep(Box<Op>, Vec3),
     SinDistortHeight(Box<Op>, f32, f32),
     MirrorZ(Box<Op>),
+    SwirlY(Box<Op>, f32),
 }
 
 impl Op { 
@@ -134,7 +136,9 @@ impl Op {
             }
             Self::RotateY(a, angle1) => {
                 return a.get_nearest_point(Vec3::rotate_y(&ray_pos, *angle1))
-
+            }
+            Self::RotateZ(a, angle1) => {
+                return a.get_nearest_point(Vec3::rotate_z(&ray_pos, *angle1))
             }
             Self::Scale(a,scale) => {
                 let mut point_a = a.get_nearest_point(ray_pos/ *scale);
@@ -153,6 +157,12 @@ impl Op {
             }
             Self::MirrorZ(a) => {
                 return a.get_nearest_point(Vec3{x: ray_pos.x, y: ray_pos.y, z: (ray_pos.z).abs()});
+            }
+            Self::SwirlY(a, k) => {
+                let c = (k*ray_pos.y).cos();
+                let s = (k*ray_pos.y).sin();
+                let q = Vec3{x: c*ray_pos.x+s*ray_pos.z, y: ray_pos.y , z: -s*ray_pos.x+c*ray_pos.z};
+                return a.get_nearest_point(q)
             }
         }
     }

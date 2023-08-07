@@ -15,6 +15,9 @@ pub fn get_indirect_lighting(
     reflectance: f32,
     surface_model: i8,
     new_refractive_index: f32,
+    BACKGROUND_COLOR_1: Vec3,
+    BACKGROUND_COLOR_2: Vec3,
+    FOG_COLOR: Vec3,
 ) -> Vec3 {
 
     //mixed diffuse and mirror
@@ -28,7 +31,7 @@ pub fn get_indirect_lighting(
 
     if surface_model == 1 {
         //Ray bouncing  Lambertian
-        u_vector_rot = Vec3::hemisphere_bounce(&normal, &u_vec);
+        u_vector_rot = Vec3::hemisphere_bounce(&normal);
         //probability of new ray
         p = 1.0 / (2.0*PI);
         brdf = reflectance / PI;
@@ -40,6 +43,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
+            BACKGROUND_COLOR_1,
+            BACKGROUND_COLOR_2,
+            FOG_COLOR,
         ); 
     }
     
@@ -56,6 +62,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
+            BACKGROUND_COLOR_1,
+            BACKGROUND_COLOR_2,
+            FOG_COLOR,
         ); 
     }
 
@@ -82,7 +91,30 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             new_refractive_index,
+            BACKGROUND_COLOR_1,
+            BACKGROUND_COLOR_2,
+            FOG_COLOR,
         );
+    }
+
+    if surface_model == 4 {
+        //Scatter hit in fog
+        u_vector_rot = Vec3::sphere_bounce();
+        //probability of new ray
+        //p = 1.0 / (2.0*PI);
+        //brdf = reflectance / PI;
+        //cos_theta = u_vector_rot.dot(&normal);
+
+        (indirect_incoming,_) = ray(
+            start_pos,
+            Vec3::normalize(&u_vector_rot),
+            &objects,
+            bounce_depth,
+            current_refractive_index,
+            BACKGROUND_COLOR_1,
+            BACKGROUND_COLOR_2,
+            FOG_COLOR,
+        ); 
     }
 
     let indirect_color = indirect_incoming * brdf * cos_theta / p;
@@ -101,7 +133,10 @@ fn get_shadow(
         objects,
         100u8,
         1.0f32,
-    );
+        Vec3{x:0.0,y:0.0,z:0.0},
+        Vec3{x:0.0,y:0.0,z:0.0},
+        Vec3{x:0.0,y:0.0,z:0.0},
+        );
 
     if light_ray_hit == true {   //TODO can göras bättre......
         return 0.0f32
