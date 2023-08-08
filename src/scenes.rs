@@ -547,9 +547,27 @@ use crate::vec::Vec3;
 
 //texture test
 pub fn scene() -> Box<Op> {
+    //Textures
+    let path = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
+    let tex1 = image::open(path).expect("File not found!");
+    
+
+
+
     let mut plane = Box::new(Plane(1.0, Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
-    plane = Box::new(Texturize(Box::new(*plane),r"C:/Users/Erik/Documents/Rust_Scripts/RayMarcher/textures/Test.png", Vec3{x:0.0, y:1.0, z:0.0}));
-    return Box::new(*plane)
+    plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:0.0, y:1.0, z:0.0}));
+
+    let mut sphere = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 3, 5.0, 1.0));
+    sphere = Box::new(Scale(Box::new(*sphere), 0.75));
+    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.0, y:-1.25, z:0.0}));
+
+    //Assemble
+    let mut objects = Box::new(Union(
+        Box::new(*sphere),
+        Box::new(*plane),
+    ));
+
+    return Box::new(*objects)
 }
 
 

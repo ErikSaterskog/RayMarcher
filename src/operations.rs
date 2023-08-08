@@ -1,5 +1,6 @@
 use image;
 use image::GenericImageView;
+use image::DynamicImage;
 
 use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, RotateZ, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
 use crate::lerp;
@@ -36,7 +37,7 @@ pub enum Op{
     SinDistortHeight(Box<Op>, f32, f32),
     MirrorZ(Box<Op>),
     SwirlY(Box<Op>, f32),
-    Texturize(Box<Op>, &'static str, Vec3)    //TODO tes with "&static str"
+    Texturize(Box<Op>, DynamicImage, Vec3)    //TODO tes with "&static str"  / String
 }
 
 impl Op { 
@@ -167,7 +168,7 @@ impl Op {
                 let q = Vec3{x: c*ray_pos.x+s*ray_pos.z, y: ray_pos.y , z: -s*ray_pos.x+c*ray_pos.z};
                 return a.get_nearest_point(q)
             }
-            Self::Texturize(a, path, normal) => {
+            Self::Texturize(a, tex, normal) => {
                 let point = a.get_nearest_point(ray_pos);
                 let d = point.dist;
                 //let c = point.color;
@@ -176,16 +177,15 @@ impl Op {
                 let er = point.emission_rate;
                 let ri = point.refractive_index;
 
-                let img = image::open(path).expect("File not found!");
+                //let img = image::open(path).expect("File not found!");
 
-                for pixel in img.pixels() {
-                    println!("Pixel: {:?}", pixel);
-                    //let c = pixel
-                    //return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
-                }
-                
-                let c = Vec3{x:255.0, y:255.0, z:255.0};
+                //ray_pos.x
+                //ray_pos.z
 
+                let dim = tex.dimensions();
+
+                let pixel = tex.get_pixel((ray_pos.x.abs()*100.0) as u32 % dim.0, (ray_pos.z.abs()*100.0) as u32 % dim.1);
+                let c = Vec3{x:pixel[0] as f32, y:pixel[1] as f32, z:pixel[2] as f32};
                 return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
             }
         }
