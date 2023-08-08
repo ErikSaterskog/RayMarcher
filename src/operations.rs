@@ -1,3 +1,5 @@
+use image;
+use image::GenericImageView;
 
 use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, RotateZ, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
 use crate::lerp;
@@ -34,6 +36,7 @@ pub enum Op{
     SinDistortHeight(Box<Op>, f32, f32),
     MirrorZ(Box<Op>),
     SwirlY(Box<Op>, f32),
+    Texturize(Box<Op>, &'static str, Vec3)    //TODO tes with "&static str"
 }
 
 impl Op { 
@@ -163,6 +166,27 @@ impl Op {
                 let s = (k*ray_pos.y).sin();
                 let q = Vec3{x: c*ray_pos.x+s*ray_pos.z, y: ray_pos.y , z: -s*ray_pos.x+c*ray_pos.z};
                 return a.get_nearest_point(q)
+            }
+            Self::Texturize(a, path, normal) => {
+                let point = a.get_nearest_point(ray_pos);
+                let d = point.dist;
+                //let c = point.color;
+                let r = point.reflectance;
+                let sm = point.surface_model;
+                let er = point.emission_rate;
+                let ri = point.refractive_index;
+
+                let img = image::open(path).expect("File not found!");
+
+                for pixel in img.pixels() {
+                    println!("Pixel: {:?}", pixel);
+                    //let c = pixel
+                    //return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
+                }
+                
+                let c = Vec3{x:255.0, y:255.0, z:255.0};
+
+                return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
             }
         }
     }

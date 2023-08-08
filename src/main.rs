@@ -86,22 +86,24 @@ fn ray(
         let surface_model = point.surface_model;
         let emission_rate = point.emission_rate;
         let mut new_refractive_index = point.refractive_index;
+        let step_length = sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
 
-        //take the step   //TODO sdf abs new variable
-        ray_pos = ray_pos + u_vec*sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
         //Check if fog scatter
         if FOG {
             if SUN_LIGHT_METHOD == 2{   //TODO, implement for 1 also
-                if rand::random::<f32>()*sdf_val.abs()*STEP_LENGTH_MULTIPLIER < FOG_DENSITY {
-                    hit = true;
-                    let normal = Vec3{x: 0.0, y: 0.0, z: 0.0};
+                if rand::random::<f32>()*step_length > FOG_DENSITY {
+                    if bounce_depth >= MAX_BOUNCE_DEPTH {
+                        return (Vec3{x:0.0, y:0.0, z:0.0}, true)
+                    }
+                    //Take the step, but encounter a particle at a random distance
+                    ray_pos = ray_pos + u_vec*step_length*rand::random::<f32>();
                     let indirect_color = lighting::get_indirect_lighting(
                         ray_pos,
                         u_vec,
                         &objects,
                         refractive_index,
                         bounce_depth + 1u8,
-                        normal,
+                        Vec3{x: 1.0, y: 0.0, z: 0.0},
                         1.0f32,
                         4i8,
                         point.refractive_index,
@@ -110,11 +112,13 @@ fn ray(
                         FOG_COLOR,
                     );
                     total_color = (FOG_COLOR/255.).vec_mult(&(indirect_color));  
-                    return (total_color,hit)
+                    return (total_color, true)
                 }
             }
         }
 
+        //take the step
+        ray_pos = ray_pos + u_vec*step_length;
 
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
@@ -226,31 +230,26 @@ fn ray(
 //let BACKGROUND_COLOR_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
 
 const EPSILON: f32 = 0.001;
-const MAX_BOUNCE_DEPTH: u8 = 20;
-const MAX_DISTANCE: f32 = 50.0;
-const NUM_OF_SAMPLES: i32 = 50;  
+const MAX_BOUNCE_DEPTH: u8 = 6;
+const MAX_DISTANCE: f32 = 10.0;
+const NUM_OF_SAMPLES: i32 = 10;  
 const DEPTH_OF_FIELD: bool = false;
 const DEPTH_OF_FIELD_CONST: f32 = 0.05;
 const FOG: bool = true;
-const FOG_DENSITY: f32 = 0.1;
+
+const FOG_DENSITY: f32 = 1.0;
 
 
-// const NUM_BIN_WIDTH: usize = 1000;
-// const CANVAS_WIDTH: f32 = 1.0;
-
-// const NUM_BIN_HEIGHT: usize = 1000;
-// const CANVAS_HEIGHT: f32 = 1.0;
-
-const NUM_BIN_WIDTH: usize = 1080/2;
+const NUM_BIN_WIDTH: usize = 1080;
 //const NUM_BIN_WIDTH: usize = 720/2;
 const CANVAS_WIDTH: f32 = 1.123;
 
-const NUM_BIN_HEIGHT: usize = 1920/2;
+const NUM_BIN_HEIGHT: usize = 1920;
 //const NUM_BIN_HEIGHT: usize = 1280/2;
 const CANVAS_HEIGHT: f32 = 2.0;
 
-const STEP_LENGTH_MULTIPLIER: f32 = 0.9;
-const SUN_LIGHT_METHOD: i8 = 2;
+const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
+const SUN_LIGHT_METHOD: i8 = 1;
 
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
@@ -259,7 +258,6 @@ fn main() {
     let progress = Arc::new(Mutex::new(0.0));
     let now = Instant::now();
 
-    
     let bin_width = CANVAS_WIDTH / (NUM_BIN_WIDTH as f32);
     let bin_height = CANVAS_HEIGHT / (NUM_BIN_HEIGHT as f32);
 
@@ -290,7 +288,7 @@ fn main() {
     };
 
     let objects = scene();
-    
+
     //loop to find bin positions
     for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
         *v = match c {
@@ -317,8 +315,8 @@ fn main() {
             
             for _k in 0..NUM_OF_SAMPLES {
                 let mut vector = Vec3::zeros();  //TODO remove this line
-                if DEPTH_OF_FIELD == true {
-                    vector = end_pos - Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST, z:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST} + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                if DEPTH_OF_FIELD {
+                    vector = end_pos - (eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST, z:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST}) + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
                 } else {
                     vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
                 }
