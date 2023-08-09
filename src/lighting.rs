@@ -15,9 +15,9 @@ pub fn get_indirect_lighting(
     reflectance: f32,
     surface_model: i8,
     new_refractive_index: f32,
-    BACKGROUND_COLOR_1: Vec3,
-    BACKGROUND_COLOR_2: Vec3,
-    FOG_COLOR: Vec3,
+    background_color_1: Vec3,
+    background_color_2: Vec3,
+    fog_color: Vec3,
 ) -> Vec3 {
 
     //mixed diffuse and mirror
@@ -43,9 +43,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
-            BACKGROUND_COLOR_1,
-            BACKGROUND_COLOR_2,
-            FOG_COLOR,
+            background_color_1,
+            background_color_2,
+            fog_color,
         ); 
     }
     
@@ -62,9 +62,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
-            BACKGROUND_COLOR_1,
-            BACKGROUND_COLOR_2,
-            FOG_COLOR,
+            background_color_1,
+            background_color_2,
+            fog_color,
         ); 
     }
 
@@ -91,9 +91,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             new_refractive_index,
-            BACKGROUND_COLOR_1,
-            BACKGROUND_COLOR_2,
-            FOG_COLOR,
+            background_color_1,
+            background_color_2,
+            fog_color,
         );
     }
 
@@ -111,9 +111,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
-            BACKGROUND_COLOR_1,
-            BACKGROUND_COLOR_2,
-            FOG_COLOR,
+            background_color_1,
+            background_color_2,
+            fog_color,
         ); 
     }
 
@@ -127,7 +127,7 @@ fn get_shadow(
     light_u_vec: Vec3,
     objects: &Op,
 ) -> f32 {
-    let (light_ray_color, light_ray_hit) = ray(    
+    let (_light_ray_color, light_ray_hit) = ray(    
         start_pos,
         light_u_vec,
         objects,
@@ -152,7 +152,7 @@ fn get_sun_point() -> Vec3 {
 
 pub fn get_direct_lighting(
     start_pos: Vec3,
-    u_vec: Vec3,
+    _u_vec: Vec3,
     objects: &Op,
     normal: Vec3,
 ) -> Vec3 {

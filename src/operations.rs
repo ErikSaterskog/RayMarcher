@@ -37,7 +37,7 @@ pub enum Op{
     SinDistortHeight(Box<Op>, f32, f32),
     MirrorZ(Box<Op>),
     SwirlY(Box<Op>, f32),
-    Texturize(Box<Op>, DynamicImage, Vec3)    //TODO tes with "&static str"  / String
+    Texturize(Box<Op>, DynamicImage, Vec3, Vec3)    //TODO tes with "&static str"  / String
 }
 
 impl Op { 
@@ -168,23 +168,21 @@ impl Op {
                 let q = Vec3{x: c*ray_pos.x+s*ray_pos.z, y: ray_pos.y , z: -s*ray_pos.x+c*ray_pos.z};
                 return a.get_nearest_point(q)
             }
-            Self::Texturize(a, tex, normal) => {
+            Self::Texturize(a, tex, v1, v2) => {
                 let point = a.get_nearest_point(ray_pos);
                 let d = point.dist;
-                //let c = point.color;
                 let r = point.reflectance;
                 let sm = point.surface_model;
                 let er = point.emission_rate;
                 let ri = point.refractive_index;
 
-                //let img = image::open(path).expect("File not found!");
-
-                //ray_pos.x
-                //ray_pos.z
-
+                let ray_pos_abs = Vec3::abs(&ray_pos);
                 let dim = tex.dimensions();
 
-                let pixel = tex.get_pixel((ray_pos.x.abs()*100.0) as u32 % dim.0, (ray_pos.z.abs()*100.0) as u32 % dim.1);
+                let tex_coord_1 = Vec3::dot(&ray_pos_abs, v1) as u32 % dim.0;
+                let tex_coord_2 = Vec3::dot(&ray_pos_abs, v2) as u32 % dim.1;
+
+                let pixel = tex.get_pixel(tex_coord_1, tex_coord_2);
                 let c = Vec3{x:pixel[0] as f32, y:pixel[1] as f32, z:pixel[2] as f32};
                 return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
             }

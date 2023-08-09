@@ -546,29 +546,34 @@ use crate::vec::Vec3;
 
 
 //texture test
-pub fn scene() -> Box<Op> {
-    //Textures
-    let path = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
-    let tex1 = image::open(path).expect("File not found!");
+// pub fn scene() -> Box<Op> {
+//     //Textures
+//     let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\dirt.png";
+//     let tex1 = image::open(path1).expect("File not found!");
+//     let tex1_scale = 200.0;
+//     let path2 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\grass_large.png";
+//     let tex2 = image::open(path2).expect("File not found!");
+//     let tex2_scale = 500.0;
     
 
+//     let mut plane = Box::new(Plane(1.0, Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
+//     plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+//     let mut sphere = Box::new(Sphere(Vec3{x:250.0, y:250.0, z:250.0}, 1.0, 1, 5.0, 1.0));
+//     sphere = Box::new(Scale(Box::new(*sphere), 0.75));
+//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:4.0, y:0.25, z:0.0}));
+//     sphere = Box::new(Texturize(Box::new(*sphere), tex2, Vec3{x:1.0, y:0.0, z:0.0}*tex2_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex2_scale));
 
 
-    let mut plane = Box::new(Plane(1.0, Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
-    plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:0.0, y:1.0, z:0.0}));
+//     //Assemble
+//     let objects = Box::new(SmoothUnion(
+//         Box::new(*sphere),
+//         Box::new(*plane),
+//         2.0,
+//     ));
 
-    let mut sphere = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 3, 5.0, 1.0));
-    sphere = Box::new(Scale(Box::new(*sphere), 0.75));
-    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.0, y:-1.25, z:0.0}));
-
-    //Assemble
-    let mut objects = Box::new(Union(
-        Box::new(*sphere),
-        Box::new(*plane),
-    ));
-
-    return Box::new(*objects)
-}
+//     return Box::new(*objects)
+// }
 
 
 //fog test
@@ -633,3 +638,36 @@ pub fn scene() -> Box<Op> {
     
 // }
 
+
+
+pub fn scene() -> Box<Op> {
+    //Textures
+    let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
+    let tex1 = image::open(path1).expect("File not found!");
+    let tex1_scale = 150.0;
+    //let path2 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\grass_large.png";
+    //let tex2 = image::open(path2).expect("File not found!");
+    //let tex2_scale = 500.0;
+    
+
+    let mut plane = Box::new(Plane(1.0, Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
+    plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+    let room = Cut(
+        Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0)),
+        Box::new(Move(Box::new(Cube(Vec3{x:9.0, y:1.9, z:0.9}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
+    );
+
+    let room_with_window = Cut(
+        Box::new(room.clone()),
+        Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
+    );
+
+    //Assemble
+    let objects = Box::new(Union(
+        Box::new(room_with_window.clone()),
+        Box::new(*plane),
+    ));
+
+    return Box::new(*objects)
+}

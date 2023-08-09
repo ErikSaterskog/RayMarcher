@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use image::RgbImage;
-use ndarray::{Array3};
+use ndarray::Array3;
 use std::time::Instant;
 use std::cmp;
 
@@ -58,9 +58,9 @@ fn ray(
     objects: &Op,
     bounce_depth: u8,
     refractive_index: f32,
-    BACKGROUND_COLOR_1: Vec3,
-    BACKGROUND_COLOR_2: Vec3,
-    FOG_COLOR: Vec3,
+    background_color_1: Vec3,
+    background_color_2: Vec3,
+    fog_color: Vec3,
 ) -> (Vec3, bool) {
 
 
@@ -107,11 +107,11 @@ fn ray(
                         1.0f32,
                         4i8,
                         point.refractive_index,
-                        BACKGROUND_COLOR_1,
-                        BACKGROUND_COLOR_2,
-                        FOG_COLOR,
+                        background_color_1,
+                        background_color_2,
+                        fog_color,
                     );
-                    total_color = (FOG_COLOR/255.).vec_mult(&(indirect_color));  
+                    total_color = (fog_color/255.).vec_mult(&(indirect_color));  
                     return (total_color, true)
                 }
             }
@@ -125,9 +125,9 @@ fn ray(
             hit = false;
             let h = (0.0f32).max(u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
-            let r = lerp(BACKGROUND_COLOR_1.x, BACKGROUND_COLOR_2.x, h);
-            let g = lerp(BACKGROUND_COLOR_1.y, BACKGROUND_COLOR_2.y, h);
-            let b = lerp(BACKGROUND_COLOR_1.z, BACKGROUND_COLOR_2.z, h);
+            let r = lerp(background_color_1.x, background_color_2.x, h);
+            let g = lerp(background_color_1.y, background_color_2.y, h);
+            let b = lerp(background_color_1.z, background_color_2.z, h);
             return (Vec3{x:r, y:g, z:b}, hit);
             //return (Vec3{x:0.0f32, y:0.0f32, z:0.0f32}, hit);
         }
@@ -163,9 +163,9 @@ fn ray(
                     reflectance,
                     surface_model,
                     new_refractive_index,
-                    BACKGROUND_COLOR_1,
-                    BACKGROUND_COLOR_2,
-                    FOG_COLOR,
+                    background_color_1,
+                    background_color_2,
+                    fog_color,
                 );
 
                 let direct_color = get_direct_lighting(
@@ -199,9 +199,9 @@ fn ray(
                         reflectance,
                         surface_model,
                         point.refractive_index,
-                        BACKGROUND_COLOR_1,
-                        BACKGROUND_COLOR_2,
-                        FOG_COLOR,
+                        background_color_1,
+                        background_color_2,
+                        fog_color,
                     );
 
                     if surface_model == 1 {
@@ -226,13 +226,11 @@ fn ray(
 
 
 //TODO: rays start from an area, to create depth of field
-//let BACKGROUND_COLOR_1 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
-//let BACKGROUND_COLOR_2 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
 
 const EPSILON: f32 = 0.001;
-const MAX_BOUNCE_DEPTH: u8 = 6;
-const MAX_DISTANCE: f32 = 10.0;
-const NUM_OF_SAMPLES: i32 = 10;  
+const MAX_BOUNCE_DEPTH: u8 = 4;
+const MAX_DISTANCE: f32 = 50.0;
+const NUM_OF_SAMPLES: i32 = 100;  
 const DEPTH_OF_FIELD: bool = false;
 const DEPTH_OF_FIELD_CONST: f32 = 0.05;
 const FOG: bool = true;
@@ -262,7 +260,7 @@ fn main() {
     let bin_height = CANVAS_HEIGHT / (NUM_BIN_HEIGHT as f32);
 
     let mut bin_pos_array: Array3<f32> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //x,y,z
-    let image_array: Array3<u8> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //R,G,B
+    //let image_array: Array3<u8> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //R,G,B
 
     let eye_pos = Vec3::zeros();
     let canvas_pos = Vec3 {
@@ -271,22 +269,13 @@ fn main() {
         z: 0.0f32,
     };
 
-    let FOG_COLOR: Vec3 = Vec3{
-        x: 255.0,
-        y: 255.0,
-        z: 255.0,
-    };
-    let BACKGROUND_COLOR_1: Vec3 = Vec3 {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    };
-    let BACKGROUND_COLOR_2: Vec3 = Vec3 {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    };
-
+    let fog_color: Vec3 = Vec3{x: 255.0, y: 255.0, z: 255.0};
+    //let background_color_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+    //let background_color_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+    
+    let background_color_1: Vec3 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
+    let background_color_2: Vec3 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
+    
     let objects = scene();
 
     //loop to find bin positions
@@ -327,9 +316,9 @@ fn main() {
                     &objects,
                     0u8,
                     START_REFRACTIVE_INDEX,
-                    BACKGROUND_COLOR_1,
-                    BACKGROUND_COLOR_2,
-                    FOG_COLOR,
+                    background_color_1,
+                    background_color_2,
+                    fog_color,
                 );
                 tcolor = tcolor + color
             }

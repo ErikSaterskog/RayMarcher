@@ -1,6 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub, Neg};
 
 #[derive(Debug, Clone, Copy)]
+//#[derive(PartialEq, Eq)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -169,6 +170,15 @@ impl Vec3 {
     // return ray_out
 
 }
+
+// //TODO may be removed
+// impl PartialEq for Vec3 {
+//     fn eq(&self, other: &Self) -> bool {
+//         return (self.x == other.x) && (self.y == other.y) && (self.z == other.z);
+//     }
+// }
+// //TODO may be removed
+// impl Eq for Vec3 {}
 
 impl Add for Vec3 {
     type Output = Vec3;
