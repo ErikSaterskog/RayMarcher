@@ -46,6 +46,7 @@ pub fn get_indirect_lighting(
             background_color_1,
             background_color_2,
             fog_color,
+            true,
         ); 
     }
     
@@ -65,6 +66,7 @@ pub fn get_indirect_lighting(
             background_color_1,
             background_color_2,
             fog_color,
+            true,
         ); 
     }
 
@@ -94,6 +96,7 @@ pub fn get_indirect_lighting(
             background_color_1,
             background_color_2,
             fog_color,
+            true,
         );
     }
 
@@ -114,6 +117,7 @@ pub fn get_indirect_lighting(
             background_color_1,
             background_color_2,
             fog_color,
+            true,
         ); 
     }
 
@@ -135,10 +139,11 @@ fn get_shadow(
         1.0f32,
         Vec3{x:0.0,y:0.0,z:0.0},
         Vec3{x:0.0,y:0.0,z:0.0},
-        Vec3{x:0.0,y:0.0,z:0.0},
+        Vec3{x:255.0,y:255.0,z:255.0},
+        false,
         );
 
-    if light_ray_hit == true {   //TODO can göras bättre......
+    if light_ray_hit {   //TODO can göras bättre......
         return 0.0f32
     } else {
         return 1.0f32
@@ -155,12 +160,22 @@ pub fn get_direct_lighting(
     _u_vec: Vec3,
     objects: &Op,
     normal: Vec3,
+    fog: bool,
 ) -> Vec3 {
 
-    let sun_pos = get_sun_point();
-    let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
-    let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
-    let shadow = get_shadow(start_pos+normal*EPSILON*10., light_u_vec, objects);
-    let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow * 0.8;  //OBS 0.8 lite wierd
-    return direct_color
+    if fog {
+        let sun_pos = get_sun_point();
+        let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
+        let shadow = get_shadow(start_pos, light_u_vec, objects);
+        let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * shadow;
+        return direct_color
+    } else {
+        let sun_pos = get_sun_point();
+        let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
+        let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
+        let shadow = get_shadow(start_pos+normal*EPSILON*10., light_u_vec, objects);
+        let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow;
+        return direct_color
+    }
+    
 }

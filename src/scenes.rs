@@ -577,97 +577,97 @@ use crate::vec::Vec3;
 
 
 //fog test
-// pub fn scene() -> Box<Op> {
-
-//     let mut wall1 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
-//     wall1 = Box::new(Move(Box::new(*wall1), Vec3{x:100.5, y:0.0, z:0.0}));
-
-//     let mut wall2 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
-//     wall2 = Box::new(Move(Box::new(*wall2), Vec3{x:-100.5, y:0.0, z:0.0}));
-
-//     let mut wall3 = Box::new(Cube(Vec3{x:0.1, y:100.0, z:100.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
-//     wall3 = Box::new(Move(Box::new(*wall3), Vec3{x:1.0, y:0.0, z:-100.0}));
-
-//     let mut light = Box::new(Cube(Vec3{x:1.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 5.0, 0.0));
-//     light = Box::new(Move(Box::new(*light), Vec3{x:0.0, y:0.0, z:2.0}));
-
-//     //Assembly
-//     let mut walls = Box::new(Union(
-//         Box::new(*wall1),
-//         Box::new(Union(
-//             Box::new(*wall2),
-//             Box::new(*wall3),
-//         ))
-//     ));
-
-//     let mut sphere1 = Box::new(Sphere(Vec3{x:255.0, y:25.0, z:25.0}, 1.0, 1, 0.0, 1.0));
-//     sphere1 = Box::new(Scale(Box::new(*sphere1), 0.5));
-//     sphere1 = Box::new(Move(Box::new(*sphere1), Vec3{x:0.0, y:1.5, z:-2.0}));
-
-//     let mut sphere2 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 2, 0.0, 1.0));
-//     sphere2 = Box::new(Scale(Box::new(*sphere2), 0.5));
-//     sphere2 = Box::new(Move(Box::new(*sphere2), Vec3{x:0.0, y:0.0, z:-2.0}));
-
-//     let mut sphere3 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 3, 0.0, 0.5));
-//     sphere3 = Box::new(Scale(Box::new(*sphere3), 0.5));
-//     sphere3 = Box::new(Move(Box::new(*sphere3), Vec3{x:0.0, y:-1.5, z:-2.0}));
-
-//     let mut spheres = Box::new(Union(
-//         Box::new(*sphere1),
-//         Box::new(Union(
-//             Box::new(*sphere2),
-//             Box::new(*sphere3)
-//         ))
-//     ));
-
-//     //Assembly
-//     let mut objects = Box::new(Union(
-//         Box::new(*walls),
-//         Box::new(Union(
-//             Box::new(*spheres),
-//             Box::new(*light)
-//         ))
-//     ));
-
-//     //Camera positioning
-//     //objects = Box::new(RotateZ(Box::new(*objects),-0.7));
-//     objects = Box::new(Move(Box::new(*objects), Vec3{x:4.0, y:0.0, z:3.0}));
-    
-    
-//     return Box::new(*objects)
-    
-// }
-
-
-
 pub fn scene() -> Box<Op> {
-    //Textures
-    let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
-    let tex1 = image::open(path1).expect("File not found!");
-    let tex1_scale = 150.0;
-    //let path2 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\grass_large.png";
-    //let tex2 = image::open(path2).expect("File not found!");
-    //let tex2_scale = 500.0;
-    
 
-    let mut plane = Box::new(Plane(1.0, Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
-    plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+    let mut wall1 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
+    wall1 = Box::new(Move(Box::new(*wall1), Vec3{x:100.5, y:0.0, z:0.0}));
 
-    let room = Cut(
-        Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0)),
-        Box::new(Move(Box::new(Cube(Vec3{x:9.0, y:1.9, z:0.9}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
-    );
+    let mut wall2 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
+    wall2 = Box::new(Move(Box::new(*wall2), Vec3{x:-100.5, y:0.0, z:0.0}));
 
-    let room_with_window = Cut(
-        Box::new(room.clone()),
-        Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
-    );
+    let mut wall3 = Box::new(Cube(Vec3{x:0.1, y:100.0, z:100.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
+    wall3 = Box::new(Move(Box::new(*wall3), Vec3{x:1.0, y:0.0, z:-100.0}));
 
-    //Assemble
-    let objects = Box::new(Union(
-        Box::new(room_with_window.clone()),
-        Box::new(*plane),
+    let mut light = Box::new(Cube(Vec3{x:1.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 5.0, 0.0));
+    light = Box::new(Move(Box::new(*light), Vec3{x:0.0, y:0.0, z:2.0}));
+
+    //Assembly
+    let mut walls = Box::new(Union(
+        Box::new(*wall1),
+        Box::new(Union(
+            Box::new(*wall2),
+            Box::new(*wall3),
+        ))
     ));
 
+    let mut sphere1 = Box::new(Sphere(Vec3{x:255.0, y:25.0, z:25.0}, 1.0, 1, 0.0, 1.0));
+    sphere1 = Box::new(Scale(Box::new(*sphere1), 0.5));
+    sphere1 = Box::new(Move(Box::new(*sphere1), Vec3{x:0.0, y:1.5, z:-2.0}));
+
+    let mut sphere2 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 2, 0.0, 1.0));
+    sphere2 = Box::new(Scale(Box::new(*sphere2), 0.5));
+    sphere2 = Box::new(Move(Box::new(*sphere2), Vec3{x:0.0, y:0.0, z:-2.0}));
+
+    let mut sphere3 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 3, 0.0, 0.5));
+    sphere3 = Box::new(Scale(Box::new(*sphere3), 0.5));
+    sphere3 = Box::new(Move(Box::new(*sphere3), Vec3{x:0.0, y:-1.5, z:-2.0}));
+
+    let mut spheres = Box::new(Union(
+        Box::new(*sphere1),
+        Box::new(Union(
+            Box::new(*sphere2),
+            Box::new(*sphere3)
+        ))
+    ));
+
+    //Assembly
+    let mut objects = Box::new(Union(
+        Box::new(*walls),
+        Box::new(Union(
+            Box::new(*spheres),
+            Box::new(*light)
+        ))
+    ));
+
+    //Camera positioning
+    //objects = Box::new(RotateZ(Box::new(*objects),-0.7));
+    objects = Box::new(Move(Box::new(*objects), Vec3{x:4.0, y:0.0, z:3.0}));
+    
+    
     return Box::new(*objects)
+    
 }
+
+
+
+// pub fn scene() -> Box<Op> {
+//     //Textures
+//     //let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
+//     //let tex1 = image::open(path1).expect("File not found!");
+//     //let tex1_scale = 150.0;
+//     //let path2 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\grass_large.png";
+//     //let tex2 = image::open(path2).expect("File not found!");
+//     //let tex2_scale = 500.0;
+    
+
+//     let mut plane = Box::new(Plane(1.0, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 1.0, 0.0));
+//     //plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+//     let room = Cut(
+//         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)),
+//         Box::new(Move(Box::new(Cube(Vec3{x:9.0, y:1.9, z:0.9}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
+//     );
+
+//     let room_with_window = Cut(
+//         Box::new(room.clone()),
+//         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
+//     );
+
+//     //Assemble
+//     let objects = Box::new(Union(
+//         Box::new(room_with_window.clone()),
+//         Box::new(*plane),
+//     ));
+
+//     return Box::new(*objects)
+// }

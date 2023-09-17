@@ -1,3 +1,4 @@
+use std::f32::consts::E;
 use std::sync::{Arc, Mutex};
 use image::RgbImage;
 use ndarray::Array3;
@@ -61,13 +62,15 @@ fn ray(
     background_color_1: Vec3,
     background_color_2: Vec3,
     fog_color: Vec3,
+    fog_collision_check: bool,
 ) -> (Vec3, bool) {
 
+    
 
     let mut ray_pos = start_pos.clone();
     let mut total_color = Vec3::zeros();
     let mut hit: bool = false;
-
+    let mut fog_length = -(1.0-rand::random::<f32>()).ln()/FOG_LAMBDA;
     let mut i=1;
 
     while hit == false {
@@ -87,23 +90,58 @@ fn ray(
         let emission_rate = point.emission_rate;
         let mut new_refractive_index = point.refractive_index;
         let step_length = sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
+        
 
         //Check if fog scatter
-        if FOG {
-            if SUN_LIGHT_METHOD == 2{   //TODO, implement for 1 also
-                if rand::random::<f32>()*step_length > FOG_DENSITY {
-                    if bounce_depth >= MAX_BOUNCE_DEPTH {
-                        return (Vec3{x:0.0, y:0.0, z:0.0}, true)
-                    }
+        if FOG && fog_collision_check {
+            if fog_length < step_length  {
+                if bounce_depth >= MAX_BOUNCE_DEPTH {
+                    return (Vec3{x:0.0, y:0.0, z:0.0}, true)
+                }
+                if SUN_LIGHT_METHOD == 1{
+                    
                     //Take the step, but encounter a particle at a random distance
-                    ray_pos = ray_pos + u_vec*step_length*rand::random::<f32>();
+                    ray_pos = ray_pos + u_vec * fog_length;
+                    
                     let indirect_color = lighting::get_indirect_lighting(
                         ray_pos,
                         u_vec,
                         &objects,
                         refractive_index,
                         bounce_depth + 1u8,
-                        Vec3{x: 1.0, y: 0.0, z: 0.0},
+                        Vec3{x: 1.0, y: 1.0, z: 1.0},  //WRONG TODO
+                        1.0f32,
+                        4i8,
+                        point.refractive_index,
+                        background_color_1,
+                        background_color_2,
+                        fog_color,
+                    );
+                    
+                    let direct_color = get_direct_lighting(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        Vec3{x: 0.0, y: 0.0, z: 0.0},
+                        true,
+                    );
+                    
+                    
+                    total_color = (fog_color/255.).vec_mult(&(direct_color*3.0 + indirect_color));
+                    return (total_color, true) 
+                }
+
+                if SUN_LIGHT_METHOD == 2{
+                    //Take the step, but encounter a particle at a random distance
+                    ray_pos = ray_pos + u_vec * fog_length;
+
+                    let indirect_color = lighting::get_indirect_lighting(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        refractive_index,
+                        bounce_depth + 1u8,
+                        Vec3{x: 1.0, y: 1.0, z: 1.0},  //WRONG TODO
                         1.0f32,
                         4i8,
                         point.refractive_index,
@@ -112,13 +150,14 @@ fn ray(
                         fog_color,
                     );
                     total_color = (fog_color/255.).vec_mult(&(indirect_color));  
-                    return (total_color, true)
+                    return (total_color, true) 
                 }
-            }
+            }   
         }
 
         //take the step
         ray_pos = ray_pos + u_vec*step_length;
+        fog_length -= step_length;
 
         //check if outside scene
         if Vec3::len(&ray_pos) > MAX_DISTANCE {
@@ -136,12 +175,10 @@ fn ray(
         if sdf_val.abs() < EPSILON {
             hit = true;
 
-            //Check if max bounces has been reached
             if bounce_depth >= MAX_BOUNCE_DEPTH {
-                hit = true;
-                return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
+                return (Vec3{x:0.0, y:0.0, z:0.0}, true)
             }
-    
+
             //find normal
             let distc = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
             let distx = objects.get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
@@ -173,9 +210,10 @@ fn ray(
                     u_vec,
                     &objects,
                     normal,
+                    false
                 );
 
-                if surface_model == 1 {
+                if surface_model == 1 {  //TODO detta kanns fel...
                     total_color = (material_color/255.).vec_mult(&(direct_color + indirect_color));  
                 }
                 if surface_model == 2 {
@@ -228,26 +266,26 @@ fn ray(
 //TODO: rays start from an area, to create depth of field
 
 const EPSILON: f32 = 0.001;
-const MAX_BOUNCE_DEPTH: u8 = 4;
+const MAX_BOUNCE_DEPTH: u8 = 5;
 const MAX_DISTANCE: f32 = 50.0;
-const NUM_OF_SAMPLES: i32 = 100;  
+const NUM_OF_SAMPLES: i32 = 1000;  
 const DEPTH_OF_FIELD: bool = false;
 const DEPTH_OF_FIELD_CONST: f32 = 0.05;
 const FOG: bool = true;
 
-const FOG_DENSITY: f32 = 1.0;
+const FOG_LAMBDA: f32 = 1.0/15.0;
 
 
-const NUM_BIN_WIDTH: usize = 1080;
-//const NUM_BIN_WIDTH: usize = 720/2;
+//const NUM_BIN_WIDTH: usize = 1080/2;
+const NUM_BIN_WIDTH: usize = 720;
 const CANVAS_WIDTH: f32 = 1.123;
 
-const NUM_BIN_HEIGHT: usize = 1920;
-//const NUM_BIN_HEIGHT: usize = 1280/2;
+//const NUM_BIN_HEIGHT: usize = 1920/2;
+const NUM_BIN_HEIGHT: usize = 1280;
 const CANVAS_HEIGHT: f32 = 2.0;
 
 const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 1;
+const SUN_LIGHT_METHOD: i8 = 2;
 
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
@@ -319,6 +357,7 @@ fn main() {
                     background_color_1,
                     background_color_2,
                     fog_color,
+                    true,
                 );
                 tcolor = tcolor + color
             }
