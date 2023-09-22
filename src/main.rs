@@ -32,6 +32,8 @@ use crate::operations::Op;
 mod scenes;
 use crate::scenes::scene;
 
+//use num;
+
 
 fn lerp(a: f32, b: f32, h: f32) -> f32 {
     return a*h+b*(1.0f32-h)
@@ -75,10 +77,10 @@ fn ray(
 
     while hit == false {
         i += 1;
-        if i>1000 {
+        if i>MAX_STEPS {
             //println!("Warning! #1");
             hit = true;
-            return (Vec3{x:255.0, y:0.0, z:0.0}, hit)
+            return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
         }
 
         //find the step length
@@ -98,11 +100,11 @@ fn ray(
                 if bounce_depth >= MAX_BOUNCE_DEPTH {
                     return (Vec3{x:0.0, y:0.0, z:0.0}, true)
                 }
+                
+                //Take the step, but encounter a particle at a random distance
+                ray_pos = ray_pos + u_vec * fog_length;
+
                 if SUN_LIGHT_METHOD == 1{
-                    
-                    //Take the step, but encounter a particle at a random distance
-                    ray_pos = ray_pos + u_vec * fog_length;
-                    
                     let indirect_color = lighting::get_indirect_lighting(
                         ray_pos,
                         u_vec,
@@ -127,14 +129,11 @@ fn ray(
                     );
                     
                     
-                    total_color = (fog_color/255.).vec_mult(&(direct_color*3.0 + indirect_color));
+                    total_color = (fog_color/255.).vec_mult(&(direct_color*SUN_MULTIPLIER + indirect_color));
                     return (total_color, true) 
                 }
 
                 if SUN_LIGHT_METHOD == 2{
-                    //Take the step, but encounter a particle at a random distance
-                    ray_pos = ray_pos + u_vec * fog_length;
-
                     let indirect_color = lighting::get_indirect_lighting(
                         ray_pos,
                         u_vec,
@@ -150,6 +149,35 @@ fn ray(
                         fog_color,
                     );
                     total_color = (fog_color/255.).vec_mult(&(indirect_color));  
+                    return (total_color, true) 
+                }
+
+                if SUN_LIGHT_METHOD == 3{
+                    let indirect_color = lighting::get_indirect_lighting_split(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        refractive_index,
+                        bounce_depth + 1u8,
+                        Vec3{x: 1.0, y: 1.0, z: 1.0},  //WRONG TODO
+                        1.0f32,
+                        4i8,
+                        point.refractive_index,
+                        background_color_1,
+                        background_color_2,
+                        fog_color,
+                        INITIAL_SPLITS,
+                    );
+                    
+                    let direct_color = get_direct_lighting(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        Vec3{x: 0.0, y: 0.0, z: 0.0},
+                        true,
+                    );
+                    
+                    total_color = (fog_color/255.).vec_mult(&(direct_color*3.0 + indirect_color));
                     return (total_color, true) 
                 }
             }   
@@ -256,6 +284,47 @@ fn ray(
                     total_color = material_color*emission_rate
                 }
             }
+
+            if SUN_LIGHT_METHOD == 3 {
+                //if refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
+                //    new_refractive_index = START_REFRACTIVE_INDEX;
+                //}
+
+                let indirect_color = lighting::get_indirect_lighting_split(
+                    ray_pos,
+                    u_vec,
+                    &objects,
+                    refractive_index,
+                    bounce_depth + 1u8,
+                    normal,
+                    reflectance,
+                    surface_model,
+                    new_refractive_index,
+                    background_color_1,
+                    background_color_2,
+                    fog_color,
+                    INITIAL_SPLITS
+                );
+
+                let direct_color = get_direct_lighting(
+                    ray_pos,
+                    u_vec,
+                    &objects,
+                    normal,
+                    false
+                );
+
+                if surface_model == 1 {  //TODO detta kanns fel...
+                    total_color = (material_color/255.).vec_mult(&(direct_color + indirect_color));  
+                }
+                if surface_model == 2 {
+                    total_color = indirect_color; 
+                }
+                if surface_model == 3 {
+                    //refreaction and reflection
+                    total_color = indirect_color;
+                }
+            }
             return (total_color, hit);
         }
     }
@@ -265,32 +334,35 @@ fn ray(
 
 //TODO: rays start from an area, to create depth of field
 
-const EPSILON: f32 = 0.001;
-const MAX_BOUNCE_DEPTH: u8 = 5;
-const MAX_DISTANCE: f32 = 50.0;
-const NUM_OF_SAMPLES: i32 = 1000;  
+const EPSILON: f32 = 0.0000025;
+const MAX_BOUNCE_DEPTH: u8 = 2;
+const MAX_DISTANCE: f32 = 100.0;
+const NUM_OF_SAMPLES: i32 = 1;  
 const DEPTH_OF_FIELD: bool = false;
 const DEPTH_OF_FIELD_CONST: f32 = 0.05;
-const FOG: bool = true;
-
+const FOG: bool = false;
 const FOG_LAMBDA: f32 = 1.0/15.0;
+const INITIAL_SPLITS: i8 = 1;
 
-
-//const NUM_BIN_WIDTH: usize = 1080/2;
-const NUM_BIN_WIDTH: usize = 720;
+//const NUM_BIN_WIDTH: usize = 1080;
+const NUM_BIN_WIDTH: usize = 720/2;
 const CANVAS_WIDTH: f32 = 1.123;
 
-//const NUM_BIN_HEIGHT: usize = 1920/2;
-const NUM_BIN_HEIGHT: usize = 1280;
+//const NUM_BIN_HEIGHT: usize = 1920;
+const NUM_BIN_HEIGHT: usize = 1280/2;
 const CANVAS_HEIGHT: f32 = 2.0;
 
-const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 2;
-
+const STEP_LENGTH_MULTIPLIER: f32 = 0.3;
+const SUN_LIGHT_METHOD: i8 = 1;             //TODO method 3,4. one initial ray, which then splits into multiple. 
+const SUN_MULTIPLIER: f32 = 3.;
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
+const MAX_STEPS: u32 = 30000;
+const TIME_APPROX: bool = true;
+const TIME_APPROX_NUM: u32 = 100;
 
 fn main() {
+        
     let progress = Arc::new(Mutex::new(0.0));
     let now = Instant::now();
 
@@ -308,8 +380,8 @@ fn main() {
     };
 
     let fog_color: Vec3 = Vec3{x: 255.0, y: 255.0, z: 255.0};
-    //let background_color_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
-    //let background_color_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+    // let background_color_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+    // let background_color_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
     
     let background_color_1: Vec3 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
     let background_color_2: Vec3 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
@@ -325,6 +397,41 @@ fn main() {
             _ => unreachable!(),
         };
     }
+
+
+    //Give aproximation of time
+    if TIME_APPROX {
+        let now_approx = Instant::now();
+        for _ in 0..TIME_APPROX_NUM {
+            let i = (rand::random::<f32>()*NUM_BIN_WIDTH as f32) as usize;
+            let j = (rand::random::<f32>()*NUM_BIN_HEIGHT as f32) as usize;
+
+            let x = bin_pos_array[[i, j, 0]];
+            let y = bin_pos_array[[i, j, 1]];
+            let z = bin_pos_array[[i, j, 2]];
+            let end_pos = Vec3{x:x, y:y, z:z};
+            
+            let mut vector = Vec3::zeros();  //TODO remove this line
+            
+            vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+
+            let u_vector = Vec3::normalize(&vector);
+            (_, _) = ray(
+                eye_pos,
+                u_vector,
+                &objects,
+                0u8,
+                START_REFRACTIVE_INDEX,
+                background_color_1,
+                background_color_2,
+                fog_color,
+                true,
+            );
+        }
+        println!("Time left: {:?}",(now_approx.elapsed()/(TIME_APPROX_NUM*2))*NUM_BIN_WIDTH as u32*NUM_BIN_HEIGHT as u32*NUM_OF_SAMPLES as u32);
+    }
+
+
 
     //loop to shoot rays parallell     /into_par_iter().map
     let image_array: Vec<Vec<Vec3>> = (0..NUM_BIN_WIDTH).into_par_iter().map(|i| {

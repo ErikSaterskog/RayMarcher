@@ -4,6 +4,7 @@ use crate::Op::Move;
 use crate::Op::Scale;
 use crate::Op::Cut;
 use crate::Op::Union;
+use crate::Op::Intersection;
 use crate::Op::SmoothUnion;
 use crate::Op::SinDistortHeight;
 use crate::Op::Sphere;
@@ -18,6 +19,7 @@ use crate::Op::InfRep;
 use crate::Op::MirrorZ;
 use crate::Op::SwirlY;
 use crate::Op::Texturize;
+use crate::Op::Frac;
 
 use core::f32::consts::PI;
 
@@ -82,7 +84,7 @@ use crate::vec::Vec3;
 //         Box::new(Cube(Vec3{x:1.,y:1.,z:10000.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0))
 //     );
 
-//     let layer_0 = Box::new(Move(Box::new(Cube(Vec3{x:1.,y:1.,z:1.}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0)),Vec3{x:2.0,y:2.0,z:2.0}));
+//     let layer_0 = Box::new(Move(Box::new(Cube(Vec3{x:1.,y:1.,z:1.}, Vec3{x:225.0, y:225.0, z:225.0}, 1.0, 1, 0.0, 1.0)),Vec3{x:2.0,y:2.0,z:2.0}));
 //     let cross_1 = Box::new(Scale(Box::new(cross_0.clone()),0.333));
 //     let layer_1 = Cut(
 //         Box::new(*layer_0.clone()),
@@ -110,28 +112,95 @@ use crate::vec::Vec3;
 //         Box::new(InfRep(Box::new(*cross_5.clone()), Vec3{x:0.074/3., y:0.074/3., z:0.074/3.}))
 //     );
 
-//     //let mut sphere = Box::new(Sphere(Vec3{x:150.0, y:150.0, z:150.0}, 0.9, 2, 0.0, 1.0));
-//     //sphere = Box::new(Scale(Box::new(*sphere),0.2));
-//     //sphere = Box::new(Move(Box::new(*sphere),Vec3{x:2.0, y:2.0, z:2.0}));
+//     let mut sphere = Box::new(Sphere(Vec3{x:150.0, y:150.0, z:150.0}, 1.0, 1, 0.0, 1.0));
+//     sphere = Box::new(Scale(Box::new(*sphere),1.0));
+//     sphere = Box::new(Move(Box::new(*sphere),Vec3{x:2.0, y:2.0, z:2.0}));
 
-//     let mut sphere2 = Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1., 3, 0.0, 1.5));
-//     sphere2 = Box::new(Scale(Box::new(*sphere2),0.02));
-//     sphere2 = Box::new(Move(Box::new(*sphere2),Vec3{x:1.12, y:2.312, z:2.05}));
+//     // let mut sphere2 = Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1., 3, 0.0, 1.5));
+//     // sphere2 = Box::new(Scale(Box::new(*sphere2),0.02));
+//     // sphere2 = Box::new(Move(Box::new(*sphere2),Vec3{x:1.12, y:2.312, z:2.05}));
 
 
-//     let mut objects = Union(
-//         //Box::new(*sphere.clone()),
-//         //Box::new(Union(
-//             Box::new(*sphere2.clone()),
-//             Box::new(layer_5.clone()),
-//         //))
+//     let ms = Intersection(
+//         Box::new(*sphere.clone()),
+//         Box::new(layer_5.clone()),
+//     );
+
+//     let plane = Box::new(Plane(3.0, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
+
+//     let objects = SmoothUnion(
+//         Box::new(ms),
+//         Box::new(*plane),
+//         1.0,
 //     );
 
 //     //let objects = Box::new(Move(Box::new(objects), Vec3{x:-1.0, y:-2.3, z:-2.0}));
-//     let objects = Box::new(Move(Box::new(objects), Vec3{x:-1.0, y:-2.3, z:-2.0}));
-//     //objects = Box::new(RotateY(Box::new(*objects), 0.5));
+//     let objects = Box::new(Move(Box::new(objects), Vec3{x:0.5, y:-1.3, z:-2.0}));
+//     let objects = Box::new(RotateZ(Box::new(*objects), -0.3));
+//     //let objects = Box::new(RotateY(Box::new(*objects), 0.3));
 //     return objects
 // }
+
+// //Menger Sponge, version 2
+// pub fn scene() -> Box<Op> {
+//     let mut cross_0 = Union(
+//         Box::new(Union(
+//             Box::new(Cube(Vec3{x:10000.0,y:1.,z:1.}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0)),
+//             Box::new(Cube(Vec3{x:1.,y:10000.0,z:1.}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0))
+//         )),
+//         Box::new(Cube(Vec3{x:1.,y:1.,z:10000.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 1.0))
+//     );
+//     //let layer_0 = Box::new(SwirlY(Box::new(Move(Box::new(Cube(Vec3{x:1.,y:1.,z:1.}, Vec3{x:225.0, y:225.0, z:225.0}, 1.0, 1, 0.0, 1.0)),Vec3{x:2.0,y:2.0,z:2.0})),2.0));
+//     let layer_0 = Box::new(Move(Box::new(SwirlY(Box::new(Cube(Vec3{x:1.,y:1.,z:1.}, Vec3{x:225.0, y:225.0, z:225.0}, 1.0, 1, 0.0, 1.0)),0.2)),Vec3{x:2.0,y:2.0,z:2.0}));
+//     let mut cross_1 = Box::new(Scale(Box::new(cross_0.clone()),0.333));
+//     cross_1 = Box::new(RotateZ(Box::new(*cross_1), -0.1));
+//     cross_1 = Box::new(RotateY(Box::new(*cross_1), 0.5));
+//     cross_1 = Box::new(SwirlY(cross_1, -0.3));
+//     let layer_1 = Cut(
+//         Box::new(*layer_0.clone()),
+//         //Box::new(InfRep(Box::new(*cross_1.clone()), Vec3{x:2.0/(3.*i as f32), y:2.0/(3.*i as f32), z:2.0/(3.*i as f32)}))
+//         Box::new(InfRep(Box::new(*cross_1.clone()), Vec3{x:2.0, y:2.0, z:2.0}))
+//     );
+//     let mut cross_2 = Box::new(Scale(Box::new(*cross_1.clone()),0.333));
+//     cross_2 = Box::new(RotateZ(Box::new(*cross_2), 1.1));
+//     cross_2 = Box::new(RotateY(Box::new(*cross_2), 0.2));
+//     cross_2 = Box::new(SwirlY(cross_2, 0.3));
+//     let mut layer_2 = Cut(
+//         Box::new(layer_1.clone()),
+//         Box::new(InfRep(Box::new(*cross_2.clone()), Vec3{x:0.666, y:0.666, z:0.666}))
+//     );
+//     let mut cross_3 = Box::new(Scale(Box::new(*cross_2.clone()),0.333));
+//     cross_3 = Box::new(RotateZ(Box::new(*cross_3), -1.0));
+//     cross_3 = Box::new(RotateY(Box::new(*cross_3), -0.1));
+//     cross_3 = Box::new(SwirlY(cross_3, 0.1));
+//     let mut layer_3 = Cut(
+//         Box::new(layer_2.clone()),
+//         Box::new(InfRep(Box::new(*cross_3.clone()), Vec3{x:0.222, y:0.222, z:0.222}))
+//     );
+//     let mut cross_4 = Box::new(Scale(Box::new(*cross_3.clone()),0.333));
+//     cross_4 = Box::new(RotateZ(Box::new(*cross_4), 0.2));
+//     cross_4 = Box::new(RotateY(Box::new(*cross_4), -0.5));
+//     cross_4 = Box::new(SwirlY(cross_4, -0.4));
+//     let mut layer_4 = Cut(
+//         Box::new(layer_3.clone()),
+//         Box::new(InfRep(Box::new(*cross_4.clone()), Vec3{x:0.074, y:0.074, z:0.074}))
+//     );
+//     let mut cross_5 = Box::new(Scale(Box::new(*cross_4.clone()),0.333));
+//     cross_5 = Box::new(RotateZ(Box::new(*cross_5), 0.13));
+//     cross_5 = Box::new(RotateY(Box::new(*cross_5), 0.3));
+//     cross_5 = Box::new(SwirlY(cross_5, 0.2));
+//     let mut layer_5 = Cut(
+//         Box::new(layer_4.clone()),
+//         Box::new(InfRep(Box::new(*cross_5.clone()), Vec3{x:0.074/3., y:0.074/3., z:0.074/3.}))
+//     );
+
+//     let objects = Box::new(Move(Box::new(layer_5), Vec3{x:-2.0, y:-2.3, z:-2.0}));
+//     //let objects = Box::new(Move(Box::new(objects), Vec3{x:0.5, y:-1.3, z:-2.0}));
+//     let objects = Box::new(RotateZ(Box::new(*objects), -0.6));
+//     let objects = Box::new(RotateY(Box::new(*objects), 4.0));
+//     return objects
+// }
+
 
 // //spheres on plane
 // pub fn scene_4() -> Box<Op> {
@@ -577,69 +646,69 @@ use crate::vec::Vec3;
 
 
 //fog test
-pub fn scene() -> Box<Op> {
+// pub fn scene() -> Box<Op> {
 
-    let mut wall1 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
-    wall1 = Box::new(Move(Box::new(*wall1), Vec3{x:100.5, y:0.0, z:0.0}));
+//     let mut wall1 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0));
+//     wall1 = Box::new(Move(Box::new(*wall1), Vec3{x:100.5, y:0.0, z:0.0}));
 
-    let mut wall2 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
-    wall2 = Box::new(Move(Box::new(*wall2), Vec3{x:-100.5, y:0.0, z:0.0}));
+//     let mut wall2 = Box::new(Cube(Vec3{x:100.0, y:100.0, z:0.1}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0));
+//     wall2 = Box::new(Move(Box::new(*wall2), Vec3{x:-100.5, y:0.0, z:0.0}));
 
-    let mut wall3 = Box::new(Cube(Vec3{x:0.1, y:100.0, z:100.0}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
-    wall3 = Box::new(Move(Box::new(*wall3), Vec3{x:1.0, y:0.0, z:-100.0}));
+//     let mut wall3 = Box::new(Cube(Vec3{x:0.1, y:100.0, z:100.0}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0));
+//     wall3 = Box::new(Move(Box::new(*wall3), Vec3{x:1.0, y:0.0, z:-100.0}));
 
-    let mut light = Box::new(Cube(Vec3{x:1.0, y:100.0, z:0.1}, Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 5.0, 0.0));
-    light = Box::new(Move(Box::new(*light), Vec3{x:0.0, y:0.0, z:2.0}));
+//     let mut light = Box::new(Cube(Vec3{x:1.0, y:100.0, z:0.1}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 5.0, 0.0));
+//     light = Box::new(Move(Box::new(*light), Vec3{x:0.0, y:0.0, z:2.0}));
 
-    //Assembly
-    let mut walls = Box::new(Union(
-        Box::new(*wall1),
-        Box::new(Union(
-            Box::new(*wall2),
-            Box::new(*wall3),
-        ))
-    ));
+//     //Assembly
+//     let mut walls = Box::new(Union(
+//         Box::new(*wall1),
+//         Box::new(Union(
+//             Box::new(*wall2),
+//             Box::new(*wall3),
+//         ))
+//     ));
 
-    let mut sphere1 = Box::new(Sphere(Vec3{x:255.0, y:25.0, z:25.0}, 1.0, 1, 0.0, 1.0));
-    sphere1 = Box::new(Scale(Box::new(*sphere1), 0.5));
-    sphere1 = Box::new(Move(Box::new(*sphere1), Vec3{x:0.0, y:1.5, z:-2.0}));
+//     let mut sphere1 = Box::new(Sphere(Vec3{x:255.0, y:25.0, z:25.0}, 1.0, 1, 0.0, 1.0));
+//     sphere1 = Box::new(Scale(Box::new(*sphere1), 0.5));
+//     sphere1 = Box::new(Move(Box::new(*sphere1), Vec3{x:0.0, y:1.5, z:-2.0}));
 
-    let mut sphere2 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 2, 0.0, 1.0));
-    sphere2 = Box::new(Scale(Box::new(*sphere2), 0.5));
-    sphere2 = Box::new(Move(Box::new(*sphere2), Vec3{x:0.0, y:0.0, z:-2.0}));
+//     let mut sphere2 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 2, 0.0, 1.0));
+//     sphere2 = Box::new(Scale(Box::new(*sphere2), 0.5));
+//     sphere2 = Box::new(Move(Box::new(*sphere2), Vec3{x:0.0, y:0.0, z:-2.0}));
 
-    let mut sphere3 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 3, 0.0, 0.5));
-    sphere3 = Box::new(Scale(Box::new(*sphere3), 0.5));
-    sphere3 = Box::new(Move(Box::new(*sphere3), Vec3{x:0.0, y:-1.5, z:-2.0}));
+//     let mut sphere3 = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 3, 0.0, 0.5));
+//     sphere3 = Box::new(Scale(Box::new(*sphere3), 0.5));
+//     sphere3 = Box::new(Move(Box::new(*sphere3), Vec3{x:0.0, y:-1.5, z:-2.0}));
 
-    let mut spheres = Box::new(Union(
-        Box::new(*sphere1),
-        Box::new(Union(
-            Box::new(*sphere2),
-            Box::new(*sphere3)
-        ))
-    ));
+//     let mut spheres = Box::new(Union(
+//         Box::new(*sphere1),
+//         Box::new(Union(
+//             Box::new(*sphere2),
+//             Box::new(*sphere3)
+//         ))
+//     ));
 
-    //Assembly
-    let mut objects = Box::new(Union(
-        Box::new(*walls),
-        Box::new(Union(
-            Box::new(*spheres),
-            Box::new(*light)
-        ))
-    ));
+//     //Assembly
+//     let mut objects = Box::new(Union(
+//         Box::new(*walls),
+//         Box::new(Union(
+//             Box::new(*spheres),
+//             Box::new(*light)
+//         ))
+//     ));
 
-    //Camera positioning
-    //objects = Box::new(RotateZ(Box::new(*objects),-0.7));
-    objects = Box::new(Move(Box::new(*objects), Vec3{x:4.0, y:0.0, z:3.0}));
+//     //Camera positioning
+//     //objects = Box::new(RotateZ(Box::new(*objects),-0.7));
+//     objects = Box::new(Move(Box::new(*objects), Vec3{x:4.0, y:0.0, z:3.0}));
     
     
-    return Box::new(*objects)
+//     return Box::new(*objects)
     
-}
+// }
 
 
-
+//Fog in room scene
 // pub fn scene() -> Box<Op> {
 //     //Textures
 //     //let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
@@ -655,7 +724,7 @@ pub fn scene() -> Box<Op> {
 
 //     let room = Cut(
 //         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)),
-//         Box::new(Move(Box::new(Cube(Vec3{x:9.0, y:1.9, z:0.9}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
+//         Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:1.9, z:0.9}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
 //     );
 
 //     let room_with_window = Cut(
@@ -663,11 +732,101 @@ pub fn scene() -> Box<Op> {
 //         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
 //     );
 
+//     let mut sphere = Box::new(Sphere(Vec3{x:255.0, y:0.0, z:0.0}, 1.0, 1, 0.0, 0.5));
+//     sphere = Box::new(Scale(Box::new(*sphere), 0.2));
+//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.5, y:0.8, z:0.0}));
+
 //     //Assemble
 //     let objects = Box::new(Union(
 //         Box::new(room_with_window.clone()),
-//         Box::new(*plane),
+//         Box::new(Union(
+//             Box::new(*plane),
+//             Box::new(*sphere),
+//         ))
 //     ));
 
 //     return Box::new(*objects)
 // }
+
+
+// pub fn scene() -> Box<Op> {
+    
+
+//     let mut plane = Box::new(Plane(1.0, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0));
+//     //plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+//     let room = Cut(
+//         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)),
+//         Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:1.9, z:0.9}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
+//     );
+
+//     let room_with_window = Cut(
+//         Box::new(room.clone()),
+//         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:0.0, z:-0.9}))
+//     );
+
+//     let mut sphere = Box::new(Sphere(Vec3{x:255.0, y:255.0, z:255.0}, 1.0, 1, 20.0, 0.5));
+//     sphere = Box::new(Scale(Box::new(*sphere), 1.0));
+//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.5, y:0.0, z:-4.0}));
+
+//     //Assemble
+//     let objects = Box::new(Union(
+//         Box::new(room_with_window.clone()),
+//         Box::new(Union(
+//             Box::new(*plane),
+//             Box::new(*sphere),
+//         ))
+//     ));
+
+//     return Box::new(*objects)
+// }
+
+
+pub fn scene() -> Box<Op> {
+    
+    let scale = 10.0;
+    // let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards_high_resolution.jpg";
+    // let tex1 = image::open(path1).expect("File not found!");
+    // let tex1_scale = 1000.0*scale;
+
+    //let mut plane = Box::new(Plane(1.0, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0));
+    //plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+    let mut frac = Box::new(Frac(Vec3{x:200.0, y:200.0, z:200.0}, 1.0, 1, 0.0, 0.0));
+    
+    let mut cube = Box::new(Cube(Vec3 {x: 10.0, y:5.0, z:10.0}, Vec3 {x:255.0, y:255.0, z:255.0}, 1.0, 1, 0.0, 0.0));
+    cube = Box::new(Move(Box::new(*cube), Vec3{x:0.0, y:-5.0, z:0.0}));
+    
+    frac = Box::new(Cut(
+        Box::new(*frac),
+        Box::new(*cube)
+    ));
+
+    frac = Box::new(Scale(Box::new(*frac), scale));
+    
+    frac = Box::new(Move(Box::new(*frac), Vec3{x:1.2, y:0.3, z:0.0}*scale));
+
+    //let mut plane = Box::new(Plane(scale, Vec3{x:128.0,y:128.0,z:128.0}, 1.0, 1, 0.0, 0.0));
+    //plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+
+    // frac = Box::new(Union(
+    //     Box::new(*frac),
+    //     Box::new(*plane),
+    // ));
+    frac = Box::new(RotateZ(Box::new(*frac), -0.5));
+
+    
+
+    //frac = Box::new(Move(Box::new(*frac), Vec3{x:0.0, y:0.0, z:-1.0}));
+    //frac = Box::new(RotateY(Box::new(*frac), 1.5));
+    
+    //Assemble
+    // let objects = Box::new(Union(
+    //     Box::new(*plane),
+    //     Box::new(*fraq),
+    //     )
+    // );
+
+    return Box::new(*frac)
+}

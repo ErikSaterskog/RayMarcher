@@ -2,11 +2,13 @@ use image;
 use image::GenericImageView;
 use image::DynamicImage;
 
-use crate::Op::{Union, SmoothUnion, Cut, Move, RotateY, RotateZ, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
+use crate::Op::{Union, SmoothUnion, Cut, Intersection, Move, RotateY, RotateZ, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
 use crate::lerp;
 use crate::vec::Vec2;
 use crate::vec::Vec3;
+use crate::vec::Vec4;
 
+use std::cmp;
 
 pub struct Surfacepoint {
     pub dist: f32,
@@ -22,6 +24,7 @@ pub enum Op{
     Union(Box<Op>, Box<Op>),
     SmoothUnion(Box<Op>, Box<Op>, f32),
     Cut(Box<Op>, Box<Op>),
+    Intersection(Box<Op>, Box<Op>),
     Sphere(Vec3, f32, i8, f32, f32),
     Cube(Vec3, Vec3, f32, i8, f32, f32),
     //Cylinder(Vec3, f32, f32),
@@ -37,7 +40,8 @@ pub enum Op{
     SinDistortHeight(Box<Op>, f32, f32),
     MirrorZ(Box<Op>),
     SwirlY(Box<Op>, f32),
-    Texturize(Box<Op>, DynamicImage, Vec3, Vec3)    //TODO tes with "&static str"  / String
+    Texturize(Box<Op>, DynamicImage, Vec3, Vec3),    //TODO tes with "&static str"  / String
+    Frac(Vec3, f32, i8, f32, f32),
 }
 
 impl Op { 
@@ -85,6 +89,16 @@ impl Op {
                 let point_b = b.get_nearest_point(ray_pos);
                 point_a.dist *= -1.0;
                 if point_a.dist > point_b.dist { 
+                    return point_a
+                } else {
+                    return point_b
+                }
+            }
+            Self::Intersection(a, b) => {
+                let point_a = a.get_nearest_point(ray_pos);
+                let point_b = b.get_nearest_point(ray_pos);
+
+                if point_a.dist > point_b.dist {
                     return point_a
                 } else {
                     return point_b
@@ -185,6 +199,63 @@ impl Op {
                 let pixel = tex.get_pixel(tex_coord_1, tex_coord_2);
                 let c = Vec3{x:pixel[0] as f32, y:pixel[1] as f32, z:pixel[2] as f32};
                 return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
+            }
+
+            Self::Frac (color, reflectance, surface_model, emission_rate, refractive_index) => {
+                //https://www.shadertoy.com/view/3tsyzl
+                let mut z = Vec4{x: ray_pos.x, y: ray_pos.y, z: ray_pos.z, q:0.0};
+                let mut dz2 = 1.0;
+                let mut m2  = 0.0;
+                let mut n = 0.0;
+                //#ifdef TRAPS
+                let mut o  = 10000000000.0;
+                //#endif
+                let k_num_ite = 200;
+                let k_c = Vec4{x:-2.0/22.0, y:6.0/22.0, z:15.0/22.0, q:-6.0/22.0};
+                
+
+                for _ in 0..k_num_ite {
+                    
+                    // z' = 3z² -> |z'|² = 9|z²|²
+                    dz2 *= 9.0*(z.q_square()).q_length2();
+
+                    // z = z³ + c		
+                    z = z.q_cube() + k_c;
+                    
+                    // stop under divergence
+                    m2 = z.q_length2();
+                    
+                    // orbit trapping : https://iquilezles.org/articles/orbittraps3d
+                    //#ifdef TRAPS
+                    let temp2 = (Vec2{x: z.x, y:z.z}-Vec2{x:0.45, y: 0.55}).len()-0.1;
+                    if o > temp2 {
+                        o = temp2;
+                    }
+                    //#endif
+                    
+                    // exit condition
+                    if m2 > 256.0 {
+                        break;			
+                    }	 
+                    n += 1.0;
+                }
+            
+                // sdf(z) = log|z|·|z|/|dz| : https://iquilezles.org/articles/distancefractals
+                let mut d = 0.25*m2.ln()*((m2/dz2).sqrt());
+                
+                //#ifdef TRAPS
+                if o < d {
+                   d = o;
+                }
+                //#endif
+                
+                //#ifdef CUT
+                //if ray_pos.y > d {
+                //    d = ray_pos.y;
+                //}
+                //#endif
+                  
+                return Surfacepoint{dist: d, color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index}      
             }
         }
     }
