@@ -211,7 +211,7 @@ impl Op {
                 let mut o  = 10000000000.0;
                 //#endif
                 let k_num_ite = 200;
-                let k_c = Vec4{x:-2.0/22.0, y:6.0/22.0, z:15.0/22.0, q:-6.0/22.0};
+                let k_c = Vec4{x:-2.0, y:6.0, z:15.0, q:-6.0}/15.0;  // /22.0
                 
 
                 for _ in 0..k_num_ite {
@@ -250,9 +250,9 @@ impl Op {
                 //#endif
                 
                 //#ifdef CUT
-                //if ray_pos.y > d {
-                //    d = ray_pos.y;
-                //}
+                // if ray_pos.y > d {
+                //     d = ray_pos.y;
+                // }
                 //#endif
                   
                 return Surfacepoint{dist: d, color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index}      

@@ -1,14 +1,17 @@
-use std::f32::consts::E;
-use std::sync::{Arc, Mutex};
 use image::RgbImage;
 use ndarray::Array3;
 use std::time::Instant;
-use std::cmp;
 
 use core::f32::consts::PI;
 use rand::prelude::*;
 use rayon::prelude::*;
+
 use std::path::Path;
+use std::fs::File;
+use std::io::prelude::*;
+use std::cmp;
+use std::f32::consts::E;
+use std::sync::{Arc, Mutex};
 
 mod vec;
 use crate::vec::Vec2;
@@ -79,8 +82,7 @@ fn ray(
         i += 1;
         if i>MAX_STEPS {
             //println!("Warning! #1");
-            hit = true;
-            return (Vec3{x:0.0, y:0.0, z:0.0}, hit)
+            return (MAX_STEPS_COLOR, true)
         }
 
         //find the step length
@@ -200,19 +202,19 @@ fn ray(
         }
 
         //check if hit
-        if sdf_val.abs() < EPSILON {
+        if sdf_val.abs() < EPSILON1 {
             hit = true;
 
             if bounce_depth >= MAX_BOUNCE_DEPTH {
-                return (Vec3{x:0.0, y:0.0, z:0.0}, true)
+                return (MAX_BOUNCE_COLOR, true)
             }
 
             //find normal
             let distc = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
-            let distx = objects.get_nearest_point(Vec3{x:ray_pos.x+EPSILON, y:ray_pos.y, z:ray_pos.z}).dist;                 
-            let disty = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON, z:ray_pos.z}).dist;                  
-            let distz = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON}).dist;
-            let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON, y:(disty-distc)/EPSILON, z:(distz-distc)/EPSILON})*sdf_val.signum();
+            let distx = objects.get_nearest_point(Vec3{x:ray_pos.x+EPSILON2, y:ray_pos.y, z:ray_pos.z}).dist;                 
+            let disty = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON2, z:ray_pos.z}).dist;                  
+            let distz = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON2}).dist;
+            let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON2, y:(disty-distc)/EPSILON2, z:(distz-distc)/EPSILON2})*sdf_val.signum();
             
             if SUN_LIGHT_METHOD == 1 {
                 if refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
@@ -334,12 +336,15 @@ fn ray(
 
 //TODO: rays start from an area, to create depth of field
 
-const EPSILON: f32 = 0.0000025;
-const MAX_BOUNCE_DEPTH: u8 = 2;
+const EPSILON1: f32 = 0.0000003;  //hit
+const EPSILON2: f32 = 0.0001;  //normal
+const EPSILON3: f32 = 0.0001;  //lightning
+const MAX_BOUNCE_DEPTH: u8 = 5;
+const MAX_BOUNCE_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
 const MAX_DISTANCE: f32 = 100.0;
-const NUM_OF_SAMPLES: i32 = 1;  
+const NUM_OF_SAMPLES: i32 = 5;  
 const DEPTH_OF_FIELD: bool = false;
-const DEPTH_OF_FIELD_CONST: f32 = 0.05;
+const DEPTH_OF_FIELD_CONST: f32 = 0.01;
 const FOG: bool = false;
 const FOG_LAMBDA: f32 = 1.0/15.0;
 const INITIAL_SPLITS: i8 = 1;
@@ -352,14 +357,16 @@ const CANVAS_WIDTH: f32 = 1.123;
 const NUM_BIN_HEIGHT: usize = 1280/2;
 const CANVAS_HEIGHT: f32 = 2.0;
 
-const STEP_LENGTH_MULTIPLIER: f32 = 0.3;
+const STEP_LENGTH_MULTIPLIER: f32 = 0.5;
 const SUN_LIGHT_METHOD: i8 = 1;             //TODO method 3,4. one initial ray, which then splits into multiple. 
 const SUN_MULTIPLIER: f32 = 3.;
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
-const MAX_STEPS: u32 = 30000;
+const MAX_STEPS: u32 = 1000;
+const MAX_STEPS_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
 const TIME_APPROX: bool = true;
 const TIME_APPROX_NUM: u32 = 100;
+const WRITE_OPTIONS: bool = true;
 
 fn main() {
         
@@ -396,6 +403,39 @@ fn main() {
             2 => canvas_pos.z - CANVAS_HEIGHT / 2.0 + (j as f32 + 0.5) * bin_height, //z
             _ => unreachable!(),
         };
+    }
+
+    if WRITE_OPTIONS {
+        // Create a file
+        let mut data_file = File::create("Options1.txt").expect("creation failed");
+        // Write contents to the file
+        let eps11 = "EPSILON1: ";
+        let eps12 = EPSILON1.to_string();
+        let eps13 = format!("{}{}\n", eps11, eps12);
+
+        let eps21 = "EPSILON2: ";
+        let eps22 = EPSILON2.to_string();
+        let eps23 = format!("{}{}\n", eps21, eps22);
+
+        let eps31 = "EPSILON3: ";
+        let eps32 = EPSILON2.to_string();
+        let eps33 = format!("{}{}\n", eps31, eps32);
+        
+        let ms1 = "MAX STEPS: ";
+        let ms2 = MAX_STEPS.to_string();
+        let ms3 = format!("{}{}\n", ms1, ms2);
+
+        let slm1 = "STEP LENGTH MULTIPLIER: ";
+        let slm2 = STEP_LENGTH_MULTIPLIER.to_string();
+        let slm3 = format!("{}{}\n", slm1, slm2);
+        
+        data_file.write((eps13).as_bytes()).expect("write failed");
+        data_file.write((eps23).as_bytes()).expect("write failed");
+        data_file.write((eps33).as_bytes()).expect("write failed");
+        data_file.write((ms3).as_bytes()).expect("write failed");
+        data_file.write((slm3).as_bytes()).expect("write failed");
+
+        println!("Created file Options1.txt");
     }
 
 
@@ -449,14 +489,14 @@ fn main() {
             
             for _k in 0..NUM_OF_SAMPLES {
                 let mut vector = Vec3::zeros();  //TODO remove this line
+                let mut new_eye_pos = eye_pos;
                 if DEPTH_OF_FIELD {
-                    vector = end_pos - (eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST, z:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST}) + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
-                } else {
-                    vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                    new_eye_pos = new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST, z:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST}
                 }
+                vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
                 let u_vector = Vec3::normalize(&vector);
                 (color, _) = ray(
-                    eye_pos,
+                    new_eye_pos,
                     u_vector,
                     &objects,
                     0u8,
@@ -473,8 +513,9 @@ fn main() {
         }).collect();
         let mut progress = progress.lock().unwrap();
         *progress += 1.0;
-        if i%20==0 {
-            println!("{:?}", *progress/NUM_BIN_WIDTH as f32);    
+        if i%5==0 {
+            print!("\rProgress: {:.3}", *progress/NUM_BIN_WIDTH as f32); 
+            std::io::stdout().flush();   
         }
         row
     }).collect();
@@ -482,5 +523,5 @@ fn main() {
     vec_to_image(image_array, "picture1.png");
         
     let elapsed = now.elapsed();
-    println!("Total time: {:?}", elapsed);
+    println!("\nTotal time: {:?}", elapsed);
 }

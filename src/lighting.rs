@@ -2,7 +2,7 @@ use crate::vec::Vec3;
 use crate::Op;
 use crate::ray;
 use core::f32::consts::PI;
-use crate::EPSILON;
+use crate::EPSILON3;
 
 
 pub fn get_indirect_lighting(
@@ -38,7 +38,7 @@ pub fn get_indirect_lighting(
         cos_theta = u_vector_rot.dot(&normal);
 
         (indirect_incoming,_) = ray(
-            start_pos + normal*EPSILON*10.,
+            start_pos + normal*EPSILON3*10.,
             Vec3::normalize(&u_vector_rot),
             &objects,
             bounce_depth,
@@ -58,7 +58,7 @@ pub fn get_indirect_lighting(
         cos_theta =  1.0;
 
         (indirect_incoming,_) = ray(
-            start_pos + normal*EPSILON*10.,
+            start_pos + normal*EPSILON3*10.,
             Vec3::normalize(&u_vector_rot),
             &objects,
             bounce_depth,
@@ -88,7 +88,7 @@ pub fn get_indirect_lighting(
         cos_theta =  1.0;
 
         (indirect_incoming,_) = ray(
-            start_pos - normal*EPSILON*10.,
+            start_pos - normal*EPSILON3*10.,
             u_vector_rot,
             &objects,
             bounce_depth,
@@ -160,7 +160,7 @@ pub fn get_indirect_lighting_split(
                 cos_theta = u_vector_rot.dot(&normal);
 
                 (indirect_incoming,_) = ray(
-                    start_pos + normal*EPSILON*10.,
+                    start_pos + normal*EPSILON3*10.,
                     Vec3::normalize(&u_vector_rot),
                     &objects,
                     bounce_depth,
@@ -182,7 +182,7 @@ pub fn get_indirect_lighting_split(
             cos_theta =  1.0;
 
             (indirect_incoming,_) = ray(
-                start_pos + normal*EPSILON*10.,
+                start_pos + normal*EPSILON3*10.,
                 Vec3::normalize(&u_vector_rot),
                 &objects,
                 bounce_depth,
@@ -212,7 +212,7 @@ pub fn get_indirect_lighting_split(
             cos_theta =  1.0;
 
             (indirect_incoming,_) = ray(
-                start_pos - normal*EPSILON*10.,
+                start_pos - normal*EPSILON3*10.,
                 u_vector_rot,
                 &objects,
                 bounce_depth,
@@ -300,7 +300,7 @@ pub fn get_direct_lighting(
         let sun_pos = get_sun_point();
         let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
         let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
-        let shadow = get_shadow(start_pos+normal*EPSILON*10., light_u_vec, objects);
+        let shadow = get_shadow(start_pos+normal*EPSILON3*10., light_u_vec, objects);
         let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow;
         return direct_color
     }

@@ -60,6 +60,18 @@ impl Add for Vec4 {
     }
 }
 
+impl Div<f32> for Vec4 {
+    type Output = Vec4;
+    fn div(self, other: f32) -> Vec4 {
+        Vec4 {
+            x: self.x / other,
+            y: self.y / other,
+            z: self.z / other,
+            q: self.q / other,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 //#[derive(PartialEq, Eq)]
 pub struct Vec3 {

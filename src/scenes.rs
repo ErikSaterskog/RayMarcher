@@ -784,7 +784,7 @@ use crate::vec::Vec3;
 
 pub fn scene() -> Box<Op> {
     
-    let scale = 10.0;
+    let scale = 1.0;
     // let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards_high_resolution.jpg";
     // let tex1 = image::open(path1).expect("File not found!");
     // let tex1_scale = 1000.0*scale;
@@ -814,6 +814,7 @@ pub fn scene() -> Box<Op> {
     //     Box::new(*frac),
     //     Box::new(*plane),
     // ));
+    
     frac = Box::new(RotateZ(Box::new(*frac), -0.5));
 
     
@@ -830,3 +831,19 @@ pub fn scene() -> Box<Op> {
 
     return Box::new(*frac)
 }
+
+
+// pub fn scene() -> Box<Op> {
+    
+//     let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards_high_resolution.jpg";
+//     let tex1 = image::open(path1).expect("File not found!");
+//     let tex1_scale = 50.0;
+
+//     let mut plane = Box::new(Plane(1.0, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0));
+//     plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+    
+//     return Box::new(*plane)
+// }
+
+
