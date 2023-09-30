@@ -1031,8 +1031,9 @@ pub fn scene() -> Box<Op> {
     //torus = Box::new(RotateZ(Box::new(*torus), PI/1.8));
     //torus = Box::new(RotateY(Box::new(*torus), PI/3.8));
 
+    let sphere_size = cube_side/3.0;
     sphere = Box::new(Scale(Box::new(*sphere), cube_side/3.0));
-    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:-cube_side/2.0, y:cube_side, z:cube_side}));
+    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:-cube_side/2.0+sphere_size, y:cube_side/2.0, z:cube_side/2.0}));
     
 
     //Assemble
@@ -1068,7 +1069,7 @@ pub fn scene() -> Box<Op> {
             cube_light,
     ))));
 
-    objects = Box::new(Move(Box::new(*objects), Vec3 { x:cube_side*2.33, y: 0.0, z: 0.0 }));
+    objects = Box::new(Move(Box::new(*objects), Vec3 { x:cube_side*2.3, y: 0.0, z: 0.0 }));
     //objects = Box::new(RotateZ(Box::new(*objects), -PI/4.0));
     //objects = Box::new(RotateY(Box::new(*objects), PI/4.0));
 
