@@ -217,6 +217,14 @@ impl Vec3 {
     //     //println!("{:?}", Vec3::len(&ray_out)); 
     //     return ray_out
     // }
+    
+    pub fn rotate_x(v: &Vec3, angle1: f32) -> Vec3 {
+        Vec3 {
+            x: v.x,
+            y: v.y*angle1.cos() - v.z*angle1.sin(),
+            z: v.y*angle1.sin() + v.z*angle1.cos(),
+        }
+    }
 
     pub fn rotate_y(v: &Vec3, angle1: f32) -> Vec3 {
         Vec3 {

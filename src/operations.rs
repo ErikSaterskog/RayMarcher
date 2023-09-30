@@ -2,13 +2,13 @@ use image;
 use image::GenericImageView;
 use image::DynamicImage;
 
-use crate::Op::{Union, SmoothUnion, Cut, Intersection, Move, RotateY, RotateZ, Scale, Sphere, Cube, Plane, CappedCone, Ellipsoid, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
+use crate::Op::{Union, SmoothUnion, Cut, Intersection, Move, RotateX, RotateY, RotateZ, Scale, Round, Sphere, Cube, Torus, Plane, CappedCone, Ellipsoid, Ellipsoid2, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
 use crate::lerp;
 use crate::vec::Vec2;
 use crate::vec::Vec3;
 use crate::vec::Vec4;
 
-use std::cmp;
+use std::cmp::min;
 
 pub struct Surfacepoint {
     pub dist: f32,
@@ -27,12 +27,15 @@ pub enum Op{
     Intersection(Box<Op>, Box<Op>),
     Sphere(Vec3, f32, i8, f32, f32),
     Cube(Vec3, Vec3, f32, i8, f32, f32),
+    Torus(Vec2, Vec3, f32, i8, f32, f32),
     //Cylinder(Vec3, f32, f32),
     CappedCone(f32, f32, f32, Vec3, f32, i8, f32, f32),
     Ellipsoid(Vec3, Vec3, f32, i8, f32, f32),
+    Ellipsoid2(Vec3, Vec3, f32, i8, f32, f32),
     Line(Vec3, Vec3, f32, Vec3, f32, i8, f32, f32),
     Plane(f32, Vec3, f32, i8, f32, f32),
     Move(Box<Op>, Vec3),
+    RotateX(Box<Op>, f32),
     RotateY(Box<Op>, f32),
     RotateZ(Box<Op>, f32),
     Scale(Box<Op>, f32),
@@ -40,6 +43,7 @@ pub enum Op{
     SinDistortHeight(Box<Op>, f32, f32),
     MirrorZ(Box<Op>),
     SwirlY(Box<Op>, f32),
+    Round(Box<Op>, f32),
     Texturize(Box<Op>, DynamicImage, Vec3, Vec3),    //TODO tes with "&static str"  / String
     Frac(Vec3, f32, i8, f32, f32),
 }
@@ -111,6 +115,10 @@ impl Op {
                 let q = Vec3::abs(&ray_pos) - *size;
                 return Surfacepoint{dist: Vec3::len(&Vec3{x:q.x.max(0.0), y:q.y.max(0.0), z:q.z.max(0.0)}) + ((q.y.max(q.z)).max(q.x)).min(0.0), color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index};
             }
+            Self::Torus(t, color, reflectance, surface_model, emission_rate, refractive_index) => {
+                let mut q = Vec2{x: Vec2{x:ray_pos.x, y:ray_pos.z}.len()-t.x,y: ray_pos.y};
+                return Surfacepoint{dist: q.len()-t.y, color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index};
+            }
             // Self::Cylinder() => {
             //     //d = Vec3::len()
             //     //vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(h,r);
@@ -140,6 +148,9 @@ impl Op {
                 let k1 = Vec3::len(&Vec3::vec_div(&ray_pos,&Vec3::vec_mult(r,r)));
                 return Surfacepoint{dist: k0*(k0-1.0)/k1, color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index};
             }
+            Self::Ellipsoid2(r, color, reflectance, surface_model, emission_rate, refractive_index) => {
+                return Surfacepoint{dist: (Vec3::len(&Vec3::vec_div(&ray_pos,&r))-1.0) * (((r.x).min(r.y)).min(r.z)), color: *color, reflectance: *reflectance, surface_model: *surface_model, emission_rate: *emission_rate, refractive_index: *refractive_index};
+            }
             Self::Line(a, b, r, color, reflectance, surface_model, emission_rate, refractive_index) => {
               let pa = ray_pos - *a;
               let ba = *b - *a;
@@ -151,6 +162,9 @@ impl Op {
             }
             Self::Move(a,vec) => {
                 return a.get_nearest_point(ray_pos - *vec)
+            }
+            Self::RotateX(a, angle1) => {
+                return a.get_nearest_point(Vec3::rotate_x(&ray_pos, *angle1))
             }
             Self::RotateY(a, angle1) => {
                 return a.get_nearest_point(Vec3::rotate_y(&ray_pos, *angle1))
@@ -197,8 +211,17 @@ impl Op {
                 let tex_coord_2 = Vec3::dot(&ray_pos_abs, v2) as u32 % dim.1;
 
                 let pixel = tex.get_pixel(tex_coord_1, tex_coord_2);
-                let c = Vec3{x:pixel[0] as f32, y:pixel[1] as f32, z:pixel[2] as f32};
+                let c = Vec3{x:pixel[0] as f32 / 255.0, y:pixel[1] as f32 / 255.0, z:pixel[2] as f32 / 255.0};
                 return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
+            }
+
+            Self::Round(a, b) => {
+
+                let mut point_a = a.get_nearest_point(ray_pos);
+                point_a.dist -= *b;
+                return point_a
+                
+                //return Surfacepoint{dist: d, color: c, reflectance: r, surface_model: sm, emission_rate: er, refractive_index: ri}
             }
 
             Self::Frac (color, reflectance, surface_model, emission_rate, refractive_index) => {
@@ -211,7 +234,7 @@ impl Op {
                 let mut o  = 10000000000.0;
                 //#endif
                 let k_num_ite = 200;
-                let k_c = Vec4{x:-2.0, y:6.0, z:15.0, q:-6.0}/15.0;  // /22.0
+                let k_c = Vec4{x:-2.0, y:6.0, z:15.0, q:-6.0}/22.0;  // /22.0
                 
 
                 for _ in 0..k_num_ite {
@@ -227,10 +250,10 @@ impl Op {
                     
                     // orbit trapping : https://iquilezles.org/articles/orbittraps3d
                     //#ifdef TRAPS
-                    let temp2 = (Vec2{x: z.x, y:z.z}-Vec2{x:0.45, y: 0.55}).len()-0.1;
-                    if o > temp2 {
-                        o = temp2;
-                    }
+                    // let temp2 = (Vec2{x: z.x, y:z.z}-Vec2{x:0.45, y: 0.55}).len()-0.1;
+                    // if o > temp2 {
+                    //     o = temp2;
+                    // }
                     //#endif
                     
                     // exit condition
@@ -241,12 +264,12 @@ impl Op {
                 }
             
                 // sdf(z) = log|z|·|z|/|dz| : https://iquilezles.org/articles/distancefractals
-                let mut d = 0.25*m2.ln()*((m2/dz2).sqrt());
+                let d = 0.25*m2.ln()*((m2/dz2).sqrt());
                 
                 //#ifdef TRAPS
-                if o < d {
-                   d = o;
-                }
+                // if o < d {
+                //    d = o;
+                // }
                 //#endif
                 
                 //#ifdef CUT

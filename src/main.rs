@@ -64,9 +64,9 @@ fn ray(
     objects: &Op,
     bounce_depth: u8,
     refractive_index: f32,
-    background_color_1: Vec3,
-    background_color_2: Vec3,
-    fog_color: Vec3,
+    //background_color_1: Vec3,
+    //background_color_2: Vec3,
+    //fog_color: Vec3,
     fog_collision_check: bool,
 ) -> (Vec3, bool) {
 
@@ -100,7 +100,7 @@ fn ray(
         if FOG && fog_collision_check {
             if fog_length < step_length  {
                 if bounce_depth >= MAX_BOUNCE_DEPTH {
-                    return (Vec3{x:0.0, y:0.0, z:0.0}, true)
+                    return (MAX_BOUNCE_COLOR, true)
                 }
                 
                 //Take the step, but encounter a particle at a random distance
@@ -117,9 +117,9 @@ fn ray(
                         1.0f32,
                         4i8,
                         point.refractive_index,
-                        background_color_1,
-                        background_color_2,
-                        fog_color,
+                        BACKGROUND_COLOR_1,
+                        BACKGROUND_COLOR_2,
+                        FOG_COLOR,
                     );
                     
                     let direct_color = get_direct_lighting(
@@ -131,7 +131,7 @@ fn ray(
                     );
                     
                     
-                    total_color = (fog_color/255.).vec_mult(&(direct_color*SUN_MULTIPLIER + indirect_color));
+                    total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + indirect_color));
                     return (total_color, true) 
                 }
 
@@ -146,11 +146,11 @@ fn ray(
                         1.0f32,
                         4i8,
                         point.refractive_index,
-                        background_color_1,
-                        background_color_2,
-                        fog_color,
+                        BACKGROUND_COLOR_1,
+                        BACKGROUND_COLOR_2,
+                        FOG_COLOR,
                     );
-                    total_color = (fog_color/255.).vec_mult(&(indirect_color));  
+                    total_color = (FOG_COLOR).vec_mult(&(indirect_color));  
                     return (total_color, true) 
                 }
 
@@ -165,9 +165,9 @@ fn ray(
                         1.0f32,
                         4i8,
                         point.refractive_index,
-                        background_color_1,
-                        background_color_2,
-                        fog_color,
+                        BACKGROUND_COLOR_1,
+                        BACKGROUND_COLOR_2,
+                        FOG_COLOR,
                         INITIAL_SPLITS,
                     );
                     
@@ -179,7 +179,7 @@ fn ray(
                         true,
                     );
                     
-                    total_color = (fog_color/255.).vec_mult(&(direct_color*3.0 + indirect_color));
+                    total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + indirect_color));
                     return (total_color, true) 
                 }
             }   
@@ -194,9 +194,9 @@ fn ray(
             hit = false;
             let h = (0.0f32).max(u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
-            let r = lerp(background_color_1.x, background_color_2.x, h);
-            let g = lerp(background_color_1.y, background_color_2.y, h);
-            let b = lerp(background_color_1.z, background_color_2.z, h);
+            let r = lerp(BACKGROUND_COLOR_1.x, BACKGROUND_COLOR_2.x, h);
+            let g = lerp(BACKGROUND_COLOR_1.y, BACKGROUND_COLOR_2.y, h);
+            let b = lerp(BACKGROUND_COLOR_1.z, BACKGROUND_COLOR_2.z, h);
             return (Vec3{x:r, y:g, z:b}, hit);
             //return (Vec3{x:0.0f32, y:0.0f32, z:0.0f32}, hit);
         }
@@ -216,6 +216,12 @@ fn ray(
             let distz = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON2}).dist;
             let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON2, y:(disty-distc)/EPSILON2, z:(distz-distc)/EPSILON2})*sdf_val.signum();
             
+            if normal.x.is_nan() || normal.y.is_nan() || normal.z.is_nan() {
+                return (NAN_COLOR, true);
+                //println!("x{:?}",distx);
+                //println!("c{:?}",distc);
+            }
+
             if SUN_LIGHT_METHOD == 1 {
                 if refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
                     new_refractive_index = START_REFRACTIVE_INDEX;
@@ -230,27 +236,31 @@ fn ray(
                     reflectance,
                     surface_model,
                     new_refractive_index,
-                    background_color_1,
-                    background_color_2,
-                    fog_color,
-                );
-
-                let direct_color = get_direct_lighting(
-                    ray_pos,
-                    u_vec,
-                    &objects,
-                    normal,
-                    false
+                    BACKGROUND_COLOR_1,
+                    BACKGROUND_COLOR_2,
+                    FOG_COLOR,
                 );
 
                 if surface_model == 1 {  //TODO detta kanns fel...
-                    total_color = (material_color/255.).vec_mult(&(direct_color + indirect_color));  
+                    let direct_color = get_direct_lighting(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        normal,
+                        false
+                    );
+
+                    total_color = (material_color).vec_mult(&(direct_color + indirect_color));  
                 }
                 if surface_model == 2 {
-                    total_color = indirect_color; 
+                    total_color = indirect_color * reflectance + material_color * (1.0 - reflectance); 
                 }
                 if surface_model == 3 {
                     //refreaction and reflection
+                    total_color = indirect_color;
+                }
+                if surface_model == 4 {
+                    //tomato reflection to be implemetned...
                     total_color = indirect_color;
                 }
             }
@@ -267,16 +277,16 @@ fn ray(
                         reflectance,
                         surface_model,
                         point.refractive_index,
-                        background_color_1,
-                        background_color_2,
-                        fog_color,
+                        BACKGROUND_COLOR_1,
+                        BACKGROUND_COLOR_2,
+                        FOG_COLOR,
                     );
 
                     if surface_model == 1 {
-                        total_color = (material_color/255.).vec_mult(&(indirect_color));  
+                        total_color = (material_color).vec_mult(&(indirect_color));  
                     }
                     if surface_model == 2 {
-                        total_color = indirect_color; 
+                        total_color = indirect_color * reflectance + material_color * (1.0 - reflectance); 
                     }
                     if surface_model == 3 {
                         //refraction and reflection
@@ -302,25 +312,27 @@ fn ray(
                     reflectance,
                     surface_model,
                     new_refractive_index,
-                    background_color_1,
-                    background_color_2,
-                    fog_color,
+                    BACKGROUND_COLOR_1,
+                    BACKGROUND_COLOR_2,
+                    FOG_COLOR,
                     INITIAL_SPLITS
                 );
 
-                let direct_color = get_direct_lighting(
-                    ray_pos,
-                    u_vec,
-                    &objects,
-                    normal,
-                    false
-                );
+                
 
                 if surface_model == 1 {  //TODO detta kanns fel...
-                    total_color = (material_color/255.).vec_mult(&(direct_color + indirect_color));  
+                    let direct_color = get_direct_lighting(
+                        ray_pos,
+                        u_vec,
+                        &objects,
+                        normal,
+                        false
+                    );
+
+                    total_color = (material_color).vec_mult(&(direct_color + indirect_color));  
                 }
                 if surface_model == 2 {
-                    total_color = indirect_color; 
+                    total_color = indirect_color * reflectance + material_color * (1.0 - reflectance); 
                 }
                 if surface_model == 3 {
                     //refreaction and reflection
@@ -336,37 +348,50 @@ fn ray(
 
 //TODO: rays start from an area, to create depth of field
 
-const EPSILON1: f32 = 0.0000003;  //hit
-const EPSILON2: f32 = 0.0001;  //normal
-const EPSILON3: f32 = 0.0001;  //lightning
-const MAX_BOUNCE_DEPTH: u8 = 5;
+const EPSILON1: f32 = 0.004;  //hit 0.0000004
+const EPSILON2: f32 = 0.001;  //normal
+const EPSILON3: f32 = 0.001;  //lightning
+const MAX_BOUNCE_DEPTH: u8 = 10;
 const MAX_BOUNCE_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
+const NAN_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:1.0};
 const MAX_DISTANCE: f32 = 100.0;
-const NUM_OF_SAMPLES: i32 = 5;  
-const DEPTH_OF_FIELD: bool = false;
-const DEPTH_OF_FIELD_CONST: f32 = 0.01;
-const FOG: bool = false;
-const FOG_LAMBDA: f32 = 1.0/15.0;
+const NUM_OF_SAMPLES: i32 = 10;
 const INITIAL_SPLITS: i8 = 1;
 
-//const NUM_BIN_WIDTH: usize = 1080;
-const NUM_BIN_WIDTH: usize = 720/2;
-const CANVAS_WIDTH: f32 = 1.123;
+const DEPTH_OF_FIELD: bool = false;
+const DEPTH_OF_FIELD_CONST: f32 = 0.2;
+const FOCAL_DEPTH_DISTANCE: f32 = 4.0;
+const SQUARE_DOF: bool = false;
 
-//const NUM_BIN_HEIGHT: usize = 1920;
-const NUM_BIN_HEIGHT: usize = 1280/2;
-const CANVAS_HEIGHT: f32 = 2.0;
+const FOG: bool = false;
+const FOG_LAMBDA: f32 = 1.0/50.0;
 
-const STEP_LENGTH_MULTIPLIER: f32 = 0.5;
-const SUN_LIGHT_METHOD: i8 = 1;             //TODO method 3,4. one initial ray, which then splits into multiple. 
-const SUN_MULTIPLIER: f32 = 3.;
+const NUM_BIN_WIDTH: usize = 1080/2;
+//const NUM_BIN_WIDTH: usize = 720/2;
+const CANVAS_WIDTH: f32 = FOCAL_DEPTH_DISTANCE*1.123;
+
+const NUM_BIN_HEIGHT: usize = 1920/2;
+//const NUM_BIN_HEIGHT: usize = 1280/2;
+const CANVAS_HEIGHT: f32 = FOCAL_DEPTH_DISTANCE*2.0;
+
+const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
+const SUN_LIGHT_METHOD: i8 = 2;             //TODO method 3,4. one initial ray, which then splits into multiple. 
+const SUN_MULTIPLIER: f32 = 2.5;
+const SUN_COLOR: Vec3 = Vec3{x:0.95, y: 0.99, z: 0.9};
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
 const MAX_STEPS: u32 = 1000;
-const MAX_STEPS_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
+const MAX_STEPS_COLOR: Vec3 = Vec3{x:1.0, y:0.0, z:0.0};
 const TIME_APPROX: bool = true;
 const TIME_APPROX_NUM: u32 = 100;
 const WRITE_OPTIONS: bool = true;
+
+const FOG_COLOR: Vec3 = Vec3{x: 0.9, y: 0.9, z: 0.9};
+const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+//const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.05, y: 0.05, z: 0.6};
+//const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.53, y: 0.81, z: 0.92};
+
 
 fn main() {
         
@@ -381,18 +406,12 @@ fn main() {
 
     let eye_pos = Vec3::zeros();
     let canvas_pos = Vec3 {
-        x: 1.0f32,
+        x: FOCAL_DEPTH_DISTANCE,
         y: 0.0f32,
         z: 0.0f32,
     };
 
-    let fog_color: Vec3 = Vec3{x: 255.0, y: 255.0, z: 255.0};
-    // let background_color_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
-    // let background_color_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
-    
-    let background_color_1: Vec3 = Vec3{x: 10.0f32, y: 10.0f32, z:155.0f32};
-    let background_color_2: Vec3 = Vec3{x: 132.0f32, y: 206.0f32, z:235.0f32};
-    
+
     let objects = scene();
 
     //loop to find bin positions
@@ -462,13 +481,13 @@ fn main() {
                 &objects,
                 0u8,
                 START_REFRACTIVE_INDEX,
-                background_color_1,
-                background_color_2,
-                fog_color,
+                //background_color_1,
+                //background_color_2,
+                //fog_color,
                 true,
             );
         }
-        println!("Time left: {:?}",(now_approx.elapsed()/(TIME_APPROX_NUM*2))*NUM_BIN_WIDTH as u32*NUM_BIN_HEIGHT as u32*NUM_OF_SAMPLES as u32);
+        println!("ETA: {:?}",(now_approx.elapsed()/(TIME_APPROX_NUM*2))*NUM_BIN_WIDTH as u32*NUM_BIN_HEIGHT as u32*NUM_OF_SAMPLES as u32);
     }
 
 
@@ -491,7 +510,18 @@ fn main() {
                 let mut vector = Vec3::zeros();  //TODO remove this line
                 let mut new_eye_pos = eye_pos;
                 if DEPTH_OF_FIELD {
-                    new_eye_pos = new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST, z:(rand::random::<f32>()-0.5)*DEPTH_OF_FIELD_CONST}
+                    let a = rand::random::<f32>();
+                    let b = rand::random::<f32>();
+                    let mut dy = 0.0;
+                    let mut dz = 0.0;
+                    if SQUARE_DOF {
+                        dy = (a-0.5)*DEPTH_OF_FIELD_CONST;
+                        dz = (b-0.5)*DEPTH_OF_FIELD_CONST;
+                    } else {
+                        dy = 0.5*(a*DEPTH_OF_FIELD_CONST).sqrt()*(b*2.0*PI).cos();
+                        dz = 0.5*(a*DEPTH_OF_FIELD_CONST).sqrt()*(b*2.0*PI).sin();
+                    }
+                    new_eye_pos = new_eye_pos + Vec3{x:0.0, y:dy, z:dz}
                 }
                 vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
                 let u_vector = Vec3::normalize(&vector);
@@ -501,19 +531,19 @@ fn main() {
                     &objects,
                     0u8,
                     START_REFRACTIVE_INDEX,
-                    background_color_1,
-                    background_color_2,
-                    fog_color,
+                    //background_color_1,
+                    //background_color_2,
+                    //fog_color,
                     true,
                 );
                 tcolor = tcolor + color
             }
             tcolor = tcolor/NUM_OF_SAMPLES as f32;
-            tcolor
+            tcolor*255.0
         }).collect();
         let mut progress = progress.lock().unwrap();
         *progress += 1.0;
-        if i%5==0 {
+        if i%1==0 {
             print!("\rProgress: {:.3}", *progress/NUM_BIN_WIDTH as f32); 
             std::io::stdout().flush();   
         }

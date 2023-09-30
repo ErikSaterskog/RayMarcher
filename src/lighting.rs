@@ -3,6 +3,7 @@ use crate::Op;
 use crate::ray;
 use core::f32::consts::PI;
 use crate::EPSILON3;
+use crate::SUN_COLOR;
 
 
 pub fn get_indirect_lighting(
@@ -36,16 +37,19 @@ pub fn get_indirect_lighting(
         p = 1.0 / (2.0*PI);
         brdf = reflectance / PI;
         cos_theta = u_vector_rot.dot(&normal);
-
+        // if cos_theta.is_nan() {
+        //     println!("u_vector_rot: {:?}",u_vector_rot);
+        //     println!("normal: {:?}",normal);
+        // }
         (indirect_incoming,_) = ray(
             start_pos + normal*EPSILON3*10.,
             Vec3::normalize(&u_vector_rot),
             &objects,
             bounce_depth,
             current_refractive_index,
-            background_color_1,
-            background_color_2,
-            fog_color,
+            //background_color_1,
+            //background_color_2,
+            //fog_color,
             true,
         ); 
     }
@@ -63,9 +67,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
-            background_color_1,
-            background_color_2,
-            fog_color,
+            // background_color_1,
+            // background_color_2,
+            // fog_color,
             true,
         ); 
     }
@@ -93,9 +97,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             new_refractive_index,
-            background_color_1,
-            background_color_2,
-            fog_color,
+            // background_color_1,
+            // background_color_2,
+            // fog_color,
             true,
         );
     }
@@ -114,9 +118,9 @@ pub fn get_indirect_lighting(
             &objects,
             bounce_depth,
             current_refractive_index,
-            background_color_1,
-            background_color_2,
-            fog_color,
+            // background_color_1,
+            // background_color_2,
+            // fog_color,
             true,
         ); 
     }
@@ -165,9 +169,9 @@ pub fn get_indirect_lighting_split(
                     &objects,
                     bounce_depth,
                     current_refractive_index,
-                    background_color_1,
-                    background_color_2,
-                    fog_color,
+                    // background_color_1,
+                    // background_color_2,
+                    // fog_color,
                     true,
                 ); 
                 cum_indirect_incoming = cum_indirect_incoming + indirect_incoming/splits as f32;
@@ -187,9 +191,9 @@ pub fn get_indirect_lighting_split(
                 &objects,
                 bounce_depth,
                 current_refractive_index,
-                background_color_1,
-                background_color_2,
-                fog_color,
+                // background_color_1,
+                // background_color_2,
+                // fog_color,
                 true,
             ); 
         }
@@ -217,9 +221,9 @@ pub fn get_indirect_lighting_split(
                 &objects,
                 bounce_depth,
                 new_refractive_index,
-                background_color_1,
-                background_color_2,
-                fog_color,
+                // background_color_1,
+                // background_color_2,
+                // fog_color,
                 true,
             );
         }
@@ -238,9 +242,9 @@ pub fn get_indirect_lighting_split(
                     &objects,
                     bounce_depth,
                     current_refractive_index,
-                    background_color_1,
-                    background_color_2,
-                    fog_color,
+                    // background_color_1,
+                    // background_color_2,
+                    // fog_color,
                     true,
                 );
                 cum_indirect_incoming = cum_indirect_incoming + indirect_incoming/splits as f32;
@@ -264,9 +268,6 @@ fn get_shadow(
         objects,
         100u8,
         1.0f32,
-        Vec3{x:0.0,y:0.0,z:0.0},
-        Vec3{x:0.0,y:0.0,z:0.0},
-        Vec3{x:255.0,y:255.0,z:255.0},
         false,
         );
 
@@ -294,14 +295,14 @@ pub fn get_direct_lighting(
         let sun_pos = get_sun_point();
         let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
         let shadow = get_shadow(start_pos, light_u_vec, objects);
-        let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * shadow;
+        let direct_color = SUN_COLOR * shadow;
         return direct_color
     } else {
         let sun_pos = get_sun_point();
         let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
         let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
         let shadow = get_shadow(start_pos+normal*EPSILON3*10., light_u_vec, objects);
-        let direct_color = Vec3{x:253.0, y: 251.0, z: 211.0} * normal_dot_light * shadow;
+        let direct_color = SUN_COLOR * normal_dot_light * shadow;
         return direct_color
     }
     
