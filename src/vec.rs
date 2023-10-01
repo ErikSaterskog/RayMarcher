@@ -1,6 +1,43 @@
 use std::ops::{Add, Div, Mul, Sub, Neg};
 
 #[derive(Debug, Clone, Copy)]
+pub struct RayData {
+    pub ray_pos: Vec3,
+    pub u_vec: Vec3,
+    pub color: Vec3,
+    pub pol_angle: f32,
+    pub bounce_depth: u8,
+    pub refractive_index: f32,
+    pub fog_collision_check: bool,
+    pub initial: bool,
+}
+
+impl RayData {
+    pub fn basic() -> RayData {
+        RayData {
+            ray_pos: Vec3::zeros(),
+            u_vec: Vec3::zeros(),
+            color: Vec3::zeros(),
+            pol_angle: 0.0,
+            bounce_depth: 0u8,
+            refractive_index: 1.0f32,
+            fog_collision_check: true,
+            initial: true,  
+        }
+    }
+}
+
+
+#[derive(Debug, Clone, Copy)]
+pub struct ObjectData {
+    pub color: Vec3,
+    pub reflectance: f32,
+    pub surface_model: i8,
+    pub emission_rate: f32,
+    pub refractive_index: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Vec4 {
     pub x: f32,
     pub y: f32,

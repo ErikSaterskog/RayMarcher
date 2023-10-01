@@ -27,6 +27,7 @@ use crate::Op::Frac;
 
 use core::f32::consts::PI;
 
+use crate::vec::ObjectData;
 use crate::vec::Vec3;
 use crate::vec::Vec2;
 
@@ -713,17 +714,17 @@ use crate::vec::Vec2;
 //     //let tex2_scale = 500.0;
     
 
-//     let mut plane = Box::new(Plane(1.0, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 1.0, 0.0));
+//     let mut plane = Box::new(Plane(1.0, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 1.0, 0.0));
 //     //plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
 
 //     let room = Cut(
-//         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)),
-//         Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:1.9, z:0.9}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
+//         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 0.0, 0.0)),
+//         Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:1.9, z:0.9}, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
 //     );
 
 //     let room_with_window = Cut(
 //         Box::new(room.clone()),
-//         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:128.0, y:128.0, z:128.0}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
+//         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
 //     );
 
 //     let mut sphere = Box::new(Sphere(Vec3{x:1.0, y:0.0, z:0.0}, 1.0, 1, 0.0, 0.5));
@@ -1006,98 +1007,120 @@ use crate::vec::Vec2;
 
 
 //Cornell box
-pub fn scene() -> Box<Op> {
+// pub fn scene() -> Box<Op> {
 
-    let cube_side = 1.5;
-    let light_side = 1.5;
-    let mut cube1 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:1.0, y:0.1, z:0.1}, 1.0, 1, 0.0, 1.0));
-    let mut cube2 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:1.0, y:1.0, z:1.0}, 1.0, 1, 0.0, 1.0));
-    let mut cube3 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:1.0, y:1.0, z:1.0}, 1.0, 1, 0.0, 1.0));
-    let mut cube4 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:0.1, y:1.0, z:0.1}, 1.0, 1, 0.0, 1.0));
-    let mut cube5 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:0.1, y:0.1, z:1.0}, 1.0, 1, 0.0, 1.0));
-    let mut cube_light = Box::new(Cube(Vec3{x:light_side, y:cube_side, z:light_side}, Vec3{x:1.0, y:1.0, z:1.0}, 1.0, 1, 2.0, 1.0));
-    //let mut torus = Box::new(Torus(Vec2 { x:0.7, y:0.4}, Vec3 { x: 0.9, y: 0.9, z: 0.0 }, 1.0, 2, 0.0, 1.5));
-    let mut sphere = Box::new(Sphere(Vec3 { x: 0.9, y: 0.9, z: 0.9 }, 1.0, 1, 0.0, 1.5));
-
-
-    cube1 = Box::new(Move(Box::new(*cube1), Vec3 {x:cube_side*2.0, y:0.0, z:0.0}));
-    cube2 = Box::new(Move(Box::new(*cube2), Vec3 {x:0.0, y:cube_side*2.0, z:0.0}));
-    cube3 = Box::new(Move(Box::new(*cube3), Vec3 {x:0.0, y:-cube_side*2.0, z:0.0}));
-    cube4 = Box::new(Move(Box::new(*cube4), Vec3 {x:0.0, y:0.0, z:cube_side*2.0}));
-    cube5 = Box::new(Move(Box::new(*cube5), Vec3 {x:0.0, y:0.0, z:-cube_side*2.0}));
-    cube_light = Box::new(Move(Box::new(*cube_light), Vec3 {x:0.0, y:-cube_side*2.0+0.1, z:0.0}));
+//     let cube_side = 1.5;
+//     let light_side = 0.5;
+//     let mut cube1 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:1.0, y:0.1, z:0.1}, 1.0, 1, 0.0, 1.0));
+//     let mut cube2 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:1.0, y:1.0, z:1.0}, 1.0, 1, 0.0, 1.0));
+//     let mut cube3 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:1.0, y:1.0, z:1.0}, 1.0, 1, 0.0, 1.0));
+//     let mut cube4 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:0.1, y:1.0, z:0.1}, 1.0, 1, 0.0, 1.0));
+//     let mut cube5 = Box::new(Cube(Vec3{x:cube_side, y:cube_side, z:cube_side}, Vec3{x:0.1, y:0.1, z:1.0}, 1.0, 1, 0.0, 1.0));
+//     let mut cube_light = Box::new(Cube(Vec3{x:light_side, y:cube_side, z:light_side}, Vec3{x:1.0, y:1.0, z:1.0}, 1.0, 1, 10.0, 1.0));
+//     //let mut torus = Box::new(Torus(Vec2 { x:0.7, y:0.4}, Vec3 { x: 0.9, y: 0.9, z: 0.0 }, 1.0, 2, 0.0, 1.5));
+//     let mut sphere = Box::new(Sphere(Vec3 { x: 0.9, y: 0.9, z: 0.9 }, 1.0, 3, 0.0, 1.5));
+//     let mut sphere2 = Box::new(Sphere(Vec3 { x: 0.9, y: 0.9, z: 0.9 }, 1.0, 2, 0.0, 1.5));
 
 
-    //torus = Box::new(RotateZ(Box::new(*torus), PI/1.8));
-    //torus = Box::new(RotateY(Box::new(*torus), PI/3.8));
+//     cube1 = Box::new(Move(Box::new(*cube1), Vec3 {x:cube_side*2.0, y:0.0, z:0.0}));
+//     cube2 = Box::new(Move(Box::new(*cube2), Vec3 {x:0.0, y:cube_side*2.0, z:0.0}));
+//     cube3 = Box::new(Move(Box::new(*cube3), Vec3 {x:0.0, y:-cube_side*2.0, z:0.0}));
+//     cube4 = Box::new(Move(Box::new(*cube4), Vec3 {x:0.0, y:0.0, z:cube_side*2.0}));
+//     cube5 = Box::new(Move(Box::new(*cube5), Vec3 {x:0.0, y:0.0, z:-cube_side*2.0}));
+//     cube_light = Box::new(Move(Box::new(*cube_light), Vec3 {x:0.0, y:-cube_side*2.0+0.1, z:0.0}));
 
-    let sphere_size = cube_side/3.0;
-    sphere = Box::new(Scale(Box::new(*sphere), cube_side/3.0));
-    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:-cube_side/2.0+sphere_size, y:cube_side/2.0, z:cube_side/2.0}));
+
+//     //torus = Box::new(RotateZ(Box::new(*torus), PI/1.8));
+//     //torus = Box::new(RotateY(Box::new(*torus), PI/3.8));
+
+//     let sphere_size = cube_side/3.0;
+//     sphere = Box::new(Scale(Box::new(*sphere), sphere_size));
+//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:-cube_side/3., y:cube_side-sphere_size, z:cube_side/2.0}));
+//     sphere2 = Box::new(Scale(Box::new(*sphere2), sphere_size));
+//     sphere2 = Box::new(Move(Box::new(*sphere2), Vec3{x:cube_side/3., y:cube_side-sphere_size, z:-cube_side/2.0}));
     
 
-    //Assemble
-    let mut cube12 = Box::new(Union(
-        Box::new(*cube1),
-        Box::new(*cube2),
-        )
-    );
-
-    let mut cube34 = Box::new(Union(
-        Box::new(*cube3),
-        Box::new(*cube4),
-        )
-    );
-
-    // let mut cube56 = Box::new(Union(
-    //     Box::new(*cube5),
-    //     Box::new(*cube4),
-    //     )
-    // );
-
-    let mut cube12345 = Box::new(Union(
-        Box::new(*cube12),
-        Box::new(Union(
-            Box::new(*cube34),
-            Box::new(*cube5)
-    ))));
-
-    let mut objects = Box::new(Union(
-        cube12345,
-        Box::new(Union(
-            sphere, 
-            cube_light,
-    ))));
-
-    objects = Box::new(Move(Box::new(*objects), Vec3 { x:cube_side*2.3, y: 0.0, z: 0.0 }));
-    //objects = Box::new(RotateZ(Box::new(*objects), -PI/4.0));
-    //objects = Box::new(RotateY(Box::new(*objects), PI/4.0));
-
-    return Box::new(*objects)
-}
-
-
-//Depth of field test
-// pub fn scene() -> Box<Op> {
-//     //Textures
-//     let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\tiles.png";
-//     let tex1 = image::open(path1).expect("File not found!");
-//     let tex1_scale = 1.5;
-
-
-//     let mut plane = Box::new(Plane(1.0, Vec3{x:0.9, y:0.9, z:0.9}, 1.0, 1, 0.0, 0.0));
-//     plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
-
-//     let mut sphere = Box::new(Sphere(Vec3{x:0.9, y:0.0, z:0.0}, 1.0, 1, 5.0, 1.0));
-//     sphere = Box::new(Scale(Box::new(*sphere), 0.75));
-//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:5.0, y:0.25, z:0.0}));
-   
-
 //     //Assemble
-//     let objects = Box::new(Union(
-//         Box::new(*sphere),
-//         Box::new(*plane),
-//     ));
+//     let mut cube12 = Box::new(Union(
+//         Box::new(*cube1),
+//         Box::new(*cube2),
+//         )
+//     );
+
+//     let mut cube34 = Box::new(Union(
+//         Box::new(*cube3),
+//         Box::new(*cube4),
+//         )
+//     );
+
+//     // let mut cube56 = Box::new(Union(
+//     //     Box::new(*cube5),
+//     //     Box::new(*cube4),
+//     //     )
+//     // );
+
+//     let mut cube12345 = Box::new(Union(
+//         Box::new(*cube12),
+//         Box::new(Union(
+//             Box::new(*cube34),
+//             Box::new(*cube5)
+//     ))));
+
+//     let mut objects = Box::new(Union(
+//         cube12345,
+//         Box::new(Union(
+//             sphere, 
+//             Box::new(Union(
+//                 sphere2,
+//                 cube_light,
+//     ))))));
+
+//     objects = Box::new(Move(Box::new(*objects), Vec3 { x:cube_side*2.66, y: 0.0, z: 0.0 }));
+//     //objects = Box::new(RotateZ(Box::new(*objects), -PI/4.0));
+//     //objects = Box::new(RotateY(Box::new(*objects), PI/4.0));
 
 //     return Box::new(*objects)
 // }
+
+
+//Depth of field test
+pub fn scene() -> Box<Op> {
+
+    let sphere_att = ObjectData{
+        color: Vec3{x:1.0, y:0.0, z:0.0},
+        reflectance: 1.0,
+        surface_model: 2,
+        emission_rate: 1.0,
+        refractive_index: 0.0,
+    };
+
+    let plane_att = ObjectData { 
+        color: Vec3 { x: 0.9, y: 0.9, z: 0.9 },
+        reflectance: 1.0,
+        surface_model: 1,
+        emission_rate: 0.0,
+        refractive_index: 0.0 
+    };
+
+    //Textures
+    let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\tiles.png";
+    let tex1 = image::open(path1).expect("File not found!");
+    let tex1_scale = 1.5;
+
+
+    let mut plane = Box::new(Plane(1.0, plane_att));
+    plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
+
+    let mut sphere = Box::new(Sphere(sphere_att));
+    sphere = Box::new(Scale(Box::new(*sphere), 0.75));
+    sphere = Box::new(Move(Box::new(*sphere), Vec3{x:4.0, y:0.25, z:0.0}));
+   
+
+    //Assemble
+    let objects = Box::new(Union(
+        Box::new(*sphere),
+        Box::new(*plane),
+    ));
+
+    return Box::new(*objects)
+}

@@ -14,7 +14,7 @@ use std::f32::consts::E;
 use std::sync::{Arc, Mutex};
 
 mod vec;
-use crate::vec::Vec2;
+use crate::vec::{Vec2, RayData};
 use crate::vec::Vec3;
 
 mod lighting;
@@ -57,22 +57,19 @@ fn vec_to_image(img: Vec<Vec<Vec3>>, filename: &str) -> () {
 }
 
 
-
 fn ray(
-    start_pos: Vec3,
-    u_vec: Vec3,
     objects: &Op,
-    bounce_depth: u8,
-    refractive_index: f32,
-    //background_color_1: Vec3,
-    //background_color_2: Vec3,
-    //fog_color: Vec3,
-    fog_collision_check: bool,
+    mut ray_data: RayData,
+    //start_pos: Vec3,
+    //u_vec: Vec3,
+    //bounce_depth: u8,
+    //refractive_index: f32,
+    //fog_collision_check: bool,
+    //initial: bool,
 ) -> (Vec3, bool) {
 
-    
 
-    let mut ray_pos = start_pos.clone();
+    //let mut ray_pos = start_pos.clone();
     let mut total_color = Vec3::zeros();
     let mut hit: bool = false;
     let mut fog_length = -(1.0-rand::random::<f32>()).ln()/FOG_LAMBDA;
@@ -86,263 +83,166 @@ fn ray(
         }
 
         //find the step length
-        let point = objects.get_nearest_point(ray_pos);
+        let point = objects.get_nearest_point(ray_data.ray_pos);
         let sdf_val = point.dist;
-        let material_color = point.color;
-        let reflectance = point.reflectance;
-        let surface_model = point.surface_model;
-        let emission_rate = point.emission_rate;
-        let mut new_refractive_index = point.refractive_index;
+        let material_color = point.attributes.color;
+        let reflectance = point.attributes.reflectance;
+        let mut surface_model = point.attributes.surface_model;
+        let emission_rate = point.attributes.emission_rate;
+        let mut new_refractive_index = point.attributes.refractive_index;
         let step_length = sdf_val.abs()*STEP_LENGTH_MULTIPLIER;
-        
-
-        //Check if fog scatter
-        if FOG && fog_collision_check {
-            if fog_length < step_length  {
-                if bounce_depth >= MAX_BOUNCE_DEPTH {
-                    return (MAX_BOUNCE_COLOR, true)
-                }
-                
-                //Take the step, but encounter a particle at a random distance
-                ray_pos = ray_pos + u_vec * fog_length;
-
-                if SUN_LIGHT_METHOD == 1{
-                    let indirect_color = lighting::get_indirect_lighting(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        refractive_index,
-                        bounce_depth + 1u8,
-                        Vec3{x: 1.0, y: 1.0, z: 1.0},  //WRONG TODO
-                        1.0f32,
-                        4i8,
-                        point.refractive_index,
-                        BACKGROUND_COLOR_1,
-                        BACKGROUND_COLOR_2,
-                        FOG_COLOR,
-                    );
-                    
-                    let direct_color = get_direct_lighting(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        Vec3{x: 0.0, y: 0.0, z: 0.0},
-                        true,
-                    );
-                    
-                    
-                    total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + indirect_color));
-                    return (total_color, true) 
-                }
-
-                if SUN_LIGHT_METHOD == 2{
-                    let indirect_color = lighting::get_indirect_lighting(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        refractive_index,
-                        bounce_depth + 1u8,
-                        Vec3{x: 1.0, y: 1.0, z: 1.0},  //WRONG TODO
-                        1.0f32,
-                        4i8,
-                        point.refractive_index,
-                        BACKGROUND_COLOR_1,
-                        BACKGROUND_COLOR_2,
-                        FOG_COLOR,
-                    );
-                    total_color = (FOG_COLOR).vec_mult(&(indirect_color));  
-                    return (total_color, true) 
-                }
-
-                if SUN_LIGHT_METHOD == 3{
-                    let indirect_color = lighting::get_indirect_lighting_split(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        refractive_index,
-                        bounce_depth + 1u8,
-                        Vec3{x: 1.0, y: 1.0, z: 1.0},  //WRONG TODO
-                        1.0f32,
-                        4i8,
-                        point.refractive_index,
-                        BACKGROUND_COLOR_1,
-                        BACKGROUND_COLOR_2,
-                        FOG_COLOR,
-                        INITIAL_SPLITS,
-                    );
-                    
-                    let direct_color = get_direct_lighting(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        Vec3{x: 0.0, y: 0.0, z: 0.0},
-                        true,
-                    );
-                    
-                    total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + indirect_color));
-                    return (total_color, true) 
-                }
-            }   
+        let mut fog_hit = false;
+        let mut normal = Vec3::zeros();
+        let mut cum_indirect_color = Vec3::zeros();
+        let mut initial_splits_var = INITIAL_SPLITS;
+        //let mut new_ray_data = ray_data.clone();
+        if !ray_data.initial {
+            initial_splits_var = 1
         }
-
-        //take the step
-        ray_pos = ray_pos + u_vec*step_length;
-        fog_length -= step_length;
+        //Check if fog scatter
+        if fog_length < step_length && FOG && ray_data.fog_collision_check {
+            //Take the step, but encounter a particle at a random 
+            ray_data.ray_pos = ray_data.ray_pos + ray_data.u_vec * fog_length;
+            surface_model = 4i8;
+            fog_hit = true;
+        } else {
+            //take the step
+            ray_data.ray_pos = ray_data.ray_pos + ray_data.u_vec*step_length;
+            fog_length -= step_length;
+        }  
 
         //check if outside scene
-        if Vec3::len(&ray_pos) > MAX_DISTANCE {
+        if Vec3::len(&ray_data.ray_pos) > MAX_DISTANCE {
+
             hit = false;
-            let h = (0.0f32).max(u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
+            let h = (0.0f32).max(ray_data.u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
             let r = lerp(BACKGROUND_COLOR_1.x, BACKGROUND_COLOR_2.x, h);
             let g = lerp(BACKGROUND_COLOR_1.y, BACKGROUND_COLOR_2.y, h);
             let b = lerp(BACKGROUND_COLOR_1.z, BACKGROUND_COLOR_2.z, h);
+            
             return (Vec3{x:r, y:g, z:b}, hit);
-            //return (Vec3{x:0.0f32, y:0.0f32, z:0.0f32}, hit);
         }
+        
+        
 
         //check if hit
-        if sdf_val.abs() < EPSILON1 {
-            hit = true;
-
-            if bounce_depth >= MAX_BOUNCE_DEPTH {
+        if sdf_val.abs() < EPSILON1 || fog_hit {
+            if ray_data.bounce_depth >= MAX_BOUNCE_DEPTH {
                 return (MAX_BOUNCE_COLOR, true)
             }
-
-            //find normal
-            let distc = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z}).dist;        
-            let distx = objects.get_nearest_point(Vec3{x:ray_pos.x+EPSILON2, y:ray_pos.y, z:ray_pos.z}).dist;                 
-            let disty = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y+EPSILON2, z:ray_pos.z}).dist;                  
-            let distz = objects.get_nearest_point(Vec3{x:ray_pos.x, y:ray_pos.y, z:ray_pos.z+EPSILON2}).dist;
-            let normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON2, y:(disty-distc)/EPSILON2, z:(distz-distc)/EPSILON2})*sdf_val.signum();
             
-            if normal.x.is_nan() || normal.y.is_nan() || normal.z.is_nan() {
-                return (NAN_COLOR, true);
-                //println!("x{:?}",distx);
-                //println!("c{:?}",distc);
+            hit = true;
+            if !fog_hit {        //find normal
+                let distc = objects.get_nearest_point(Vec3{x:ray_data.ray_pos.x, y:ray_data.ray_pos.y, z:ray_data.ray_pos.z}).dist;        
+                let distx = objects.get_nearest_point(Vec3{x:ray_data.ray_pos.x+EPSILON2, y:ray_data.ray_pos.y, z:ray_data.ray_pos.z}).dist;                 
+                let disty = objects.get_nearest_point(Vec3{x:ray_data.ray_pos.x, y:ray_data.ray_pos.y+EPSILON2, z:ray_data.ray_pos.z}).dist;                  
+                let distz = objects.get_nearest_point(Vec3{x:ray_data.ray_pos.x, y:ray_data.ray_pos.y, z:ray_data.ray_pos.z+EPSILON2}).dist;
+                normal = Vec3::normalize(&Vec3{x:(distx-distc)/EPSILON2, y:(disty-distc)/EPSILON2, z:(distz-distc)/EPSILON2})*sdf_val.signum();
+                
+                if normal.x.is_nan() || normal.y.is_nan() || normal.z.is_nan() {
+                    return (NAN_COLOR, true);
+                    //println!("x{:?}",distx);
+                    //println!("c{:?}",distc);
+                }
             }
-
             if SUN_LIGHT_METHOD == 1 {
-                if refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
+                if ray_data.refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
                     new_refractive_index = START_REFRACTIVE_INDEX;
                 }
-                let indirect_color = lighting::get_indirect_lighting(
-                    ray_pos,
-                    u_vec,
-                    &objects,
-                    refractive_index,
-                    bounce_depth + 1u8,
-                    normal,
-                    reflectance,
-                    surface_model,
-                    new_refractive_index,
-                    BACKGROUND_COLOR_1,
-                    BACKGROUND_COLOR_2,
-                    FOG_COLOR,
-                );
-
-                if surface_model == 1 {  //TODO detta kanns fel...
-                    let direct_color = get_direct_lighting(
-                        ray_pos,
-                        u_vec,
+                ray_data.bounce_depth += 1;
+                for _ in 0..initial_splits_var {
+                    let indirect_color = lighting::get_indirect_lighting(
+                        ray_data,
                         &objects,
                         normal,
-                        false
+                        reflectance,
+                        surface_model,
+                        new_refractive_index,
                     );
-
-                    total_color = (material_color).vec_mult(&(direct_color + indirect_color));  
+                    cum_indirect_color = cum_indirect_color + indirect_color/(initial_splits_var as f32);
+                }
+                if surface_model == 1 {  //TODO detta kanns fel...
+                    let direct_color = get_direct_lighting(
+                        ray_data.ray_pos,
+                        ray_data.u_vec,
+                        &objects,
+                        normal,
+                        fog_hit,
+                    );
+                    total_color = (material_color).vec_mult(&(direct_color + cum_indirect_color));
+                    return (total_color, hit)
                 }
                 if surface_model == 2 {
-                    total_color = indirect_color * reflectance + material_color * (1.0 - reflectance); 
+                    total_color = cum_indirect_color * reflectance + material_color * (1.0 - reflectance); 
+                    return (total_color, hit)
                 }
                 if surface_model == 3 {
                     //refreaction and reflection
-                    total_color = indirect_color;
+                    total_color = cum_indirect_color;
+                    return (total_color, hit)
                 }
                 if surface_model == 4 {
-                    //tomato reflection to be implemetned...
-                    total_color = indirect_color;
-                }
+                    //Fog diffuse
+                    let direct_color = get_direct_lighting(
+                        ray_data.ray_pos,
+                        ray_data.u_vec,
+                        &objects,
+                        normal,
+                        fog_hit,
+                    );
+                    total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + cum_indirect_color));
+                    return (total_color, hit)
+                }//tomato reflection to be implemetned...
             }
 
             if SUN_LIGHT_METHOD == 2 { 
                 if emission_rate < 0.001 {
-                    let indirect_color = lighting::get_indirect_lighting(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        refractive_index,
-                        bounce_depth + 1u8,
-                        normal,
-                        reflectance,
-                        surface_model,
-                        point.refractive_index,
-                        BACKGROUND_COLOR_1,
-                        BACKGROUND_COLOR_2,
-                        FOG_COLOR,
-                    );
-
+                    ray_data.bounce_depth += 1;
+                    for _ in 0..initial_splits_var {
+                        let indirect_color = lighting::get_indirect_lighting(
+                            ray_data,
+                            &objects,
+                            normal,
+                            reflectance,
+                            surface_model,
+                            new_refractive_index,
+                        );
+                        cum_indirect_color = cum_indirect_color + indirect_color/(initial_splits_var as f32);
+                    }
                     if surface_model == 1 {
-                        total_color = (material_color).vec_mult(&(indirect_color));  
+                        total_color = (material_color).vec_mult(&(cum_indirect_color));
+                        return (total_color, hit)
                     }
                     if surface_model == 2 {
-                        total_color = indirect_color * reflectance + material_color * (1.0 - reflectance); 
+                        total_color = cum_indirect_color * reflectance + material_color * (1.0 - reflectance);
+                        return (total_color, hit) 
                     }
                     if surface_model == 3 {
                         //refraction and reflection
-                        total_color = indirect_color;
+                        total_color = cum_indirect_color;
+                        return (total_color, hit)
+                    }
+                    if surface_model == 4 {
+                        //Fog diffuse
+                        let direct_color = get_direct_lighting(
+                            ray_data.ray_pos,
+                            ray_data.u_vec,
+                            &objects,
+                            normal,
+                            fog_hit,
+                        );
+                        total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + cum_indirect_color));
+                        return (total_color, hit)
                     }
                 } else {
-                    total_color = material_color*emission_rate
+                    total_color = material_color*emission_rate;
+                    return (total_color, hit)
                 }
             }
-
-            if SUN_LIGHT_METHOD == 3 {
-                //if refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
-                //    new_refractive_index = START_REFRACTIVE_INDEX;
-                //}
-
-                let indirect_color = lighting::get_indirect_lighting_split(
-                    ray_pos,
-                    u_vec,
-                    &objects,
-                    refractive_index,
-                    bounce_depth + 1u8,
-                    normal,
-                    reflectance,
-                    surface_model,
-                    new_refractive_index,
-                    BACKGROUND_COLOR_1,
-                    BACKGROUND_COLOR_2,
-                    FOG_COLOR,
-                    INITIAL_SPLITS
-                );
-
-                
-
-                if surface_model == 1 {  //TODO detta kanns fel...
-                    let direct_color = get_direct_lighting(
-                        ray_pos,
-                        u_vec,
-                        &objects,
-                        normal,
-                        false
-                    );
-
-                    total_color = (material_color).vec_mult(&(direct_color + indirect_color));  
-                }
-                if surface_model == 2 {
-                    total_color = indirect_color * reflectance + material_color * (1.0 - reflectance); 
-                }
-                if surface_model == 3 {
-                    //refreaction and reflection
-                    total_color = indirect_color;
-                }
-            }
-            return (total_color, hit);
         }
-    }
-    return (total_color, hit);
+    };  
+    return (total_color, hit)  
 }
 
 
@@ -351,31 +251,33 @@ fn ray(
 const EPSILON1: f32 = 0.004;  //hit 0.0000004
 const EPSILON2: f32 = 0.001;  //normal
 const EPSILON3: f32 = 0.001;  //lightning
-const MAX_BOUNCE_DEPTH: u8 = 10;
+const MAX_BOUNCE_DEPTH: u8 = 5;
 const MAX_BOUNCE_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
 const NAN_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:1.0};
 const MAX_DISTANCE: f32 = 100.0;
-const NUM_OF_SAMPLES: i32 = 10;
-const INITIAL_SPLITS: i8 = 1;
+const NUM_OF_SAMPLES: i32 = 4;
+const INITIAL_SPLITS: i8 = 5;
 
-const DEPTH_OF_FIELD: bool = false;
+const DEPTH_OF_FIELD: bool = true;
 const DEPTH_OF_FIELD_CONST: f32 = 0.2;
 const FOCAL_DEPTH_DISTANCE: f32 = 4.0;
 const SQUARE_DOF: bool = false;
 
 const FOG: bool = false;
-const FOG_LAMBDA: f32 = 1.0/50.0;
+const FOG_LAMBDA: f32 = 1.0/8.0;
 
 const NUM_BIN_WIDTH: usize = 1080/2;
 //const NUM_BIN_WIDTH: usize = 720/2;
 const CANVAS_WIDTH: f32 = FOCAL_DEPTH_DISTANCE*1.123;
 
 const NUM_BIN_HEIGHT: usize = 1920/2;
+//const NUM_BIN_HEIGHT: usize = 1080;
 //const NUM_BIN_HEIGHT: usize = 1280/2;
 const CANVAS_HEIGHT: f32 = FOCAL_DEPTH_DISTANCE*2.0;
+//const CANVAS_HEIGHT: f32 = FOCAL_DEPTH_DISTANCE*1.123;
 
 const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 2;             //TODO method 3,4. one initial ray, which then splits into multiple. 
+const SUN_LIGHT_METHOD: i8 = 1;             //TODO method 3,4. one initial ray, which then splits into multiple. 
 const SUN_MULTIPLIER: f32 = 2.5;
 const SUN_COLOR: Vec3 = Vec3{x:0.95, y: 0.99, z: 0.9};
 const START_REFRACTIVE_INDEX: f32 = 1.0;
@@ -387,10 +289,10 @@ const TIME_APPROX_NUM: u32 = 100;
 const WRITE_OPTIONS: bool = true;
 
 const FOG_COLOR: Vec3 = Vec3{x: 0.9, y: 0.9, z: 0.9};
-const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
-const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
-//const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.05, y: 0.05, z: 0.6};
-//const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.53, y: 0.81, z: 0.92};
+//const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+//const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
+ const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.05, y: 0.05, z: 0.6};
+ const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.53, y: 0.81, z: 0.92};
 
 
 fn main() {
@@ -475,16 +377,23 @@ fn main() {
             vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
 
             let u_vector = Vec3::normalize(&vector);
+            // (_, _) = ray(
+            //     eye_pos,
+            //     u_vector,
+            //     &objects,
+            //     0u8,
+            //     START_REFRACTIVE_INDEX,
+            //     true,
+            //     true,
+            // );
+            let mut ray_data = RayData::basic();
+            ray_data.ray_pos = eye_pos;
+            ray_data.u_vec = u_vector;
+            ray_data.refractive_index = START_REFRACTIVE_INDEX;
+
             (_, _) = ray(
-                eye_pos,
-                u_vector,
                 &objects,
-                0u8,
-                START_REFRACTIVE_INDEX,
-                //background_color_1,
-                //background_color_2,
-                //fog_color,
-                true,
+                ray_data,
             );
         }
         println!("ETA: {:?}",(now_approx.elapsed()/(TIME_APPROX_NUM*2))*NUM_BIN_WIDTH as u32*NUM_BIN_HEIGHT as u32*NUM_OF_SAMPLES as u32);
@@ -525,17 +434,26 @@ fn main() {
                 }
                 vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
                 let u_vector = Vec3::normalize(&vector);
-                (color, _) = ray(
-                    new_eye_pos,
-                    u_vector,
+                // (color, _) = ray(
+                //     new_eye_pos,
+                //     u_vector,
+                //     &objects,
+                //     0u8,
+                //     START_REFRACTIVE_INDEX,
+                //     true,
+                //     true,
+                // );
+                let mut ray_data = RayData::basic();
+                ray_data.ray_pos = new_eye_pos;
+                ray_data.u_vec = u_vector;
+                ray_data.refractive_index = START_REFRACTIVE_INDEX;
+
+
+                (color,_) = ray(
                     &objects,
-                    0u8,
-                    START_REFRACTIVE_INDEX,
-                    //background_color_1,
-                    //background_color_2,
-                    //fog_color,
-                    true,
+                    ray_data,
                 );
+
                 tcolor = tcolor + color
             }
             tcolor = tcolor/NUM_OF_SAMPLES as f32;
