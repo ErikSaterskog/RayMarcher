@@ -1,8 +1,11 @@
-use std::ops::{Add, Div, Mul, Sub, Neg};
+use std::{ops::{Add, Div, Mul, Sub, Neg}, f32::consts::PI};
+
+use crate::lerp;
 
 #[derive(Debug, Clone, Copy)]
 pub struct RayData {
     pub ray_pos: Vec3,
+    pub origin: Vec3,
     pub u_vec: Vec3,
     pub color: Vec3,
     pub pol_angle: f32,
@@ -16,6 +19,7 @@ impl RayData {
     pub fn basic() -> RayData {
         RayData {
             ray_pos: Vec3::zeros(),
+            origin: Vec3::zeros(),
             u_vec: Vec3::zeros(),
             color: Vec3::zeros(),
             pol_angle: 0.0,
@@ -204,6 +208,14 @@ impl Vec3 {
 
     }
 
+    pub fn exp(a: &Vec3) -> Vec3 {
+        Vec3 {
+            x: a.x.exp(),
+            y: a.y.exp(),
+            z: a.z.exp(),
+        }
+    }
+
     pub fn rot_vector180(n: &Vec3, v: &Vec3) -> Vec3 {
         n.scale(2.0 * (n.dot(v))) - *v
     }
@@ -212,20 +224,6 @@ impl Vec3 {
         return *v*angle.cos() + k.cross(v)*angle.sin() + *k*(k.dot(v))*(1.0-angle.cos())
     }
 
-    // pub fn hemisphere_bounce(normal: &Vec3, v: &Vec3) -> Vec3 {
-    //     //let local_z=normal;
-    //     let local_x=normal.cross(v);
-    //     let local_y=normal.cross(local_x);
-    //     let theta = rand::random::<f32>().acos();
-    //     let phi = rand::random::<f32>()*2.0*PI;
-    //     let output = Vec3 {
-    //         x:theta.sin()*phi.cos(),
-    //         y:theta.sin()*phi.sin(),
-    //         z:theta.cos(),
-    //     }
-    //     return output
-    // }
-
     pub fn hemisphere_bounce(normal: &Vec3) -> Vec3 {
         let mut ray_out = Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*2.0-Vec3{x:1.0, y:1.0, z:1.0};
         while ray_out.dot(&ray_out) > 1.0 || normal.dot(&ray_out) < 0.0 {
@@ -233,6 +231,31 @@ impl Vec3 {
         } 
         Vec3::normalize(&ray_out)
     }
+
+    // pub fn cosine_weighted_hemisphere_bounce(normal: &Vec3) -> Vec3 {   chatgpt
+    //     // Calculate spherical coordinates
+    //     let theta = 2.0 * PI * rand::random::<f32>();
+    //     let phi = (1.0 - rand::random::<f32>()).acos();
+
+    //     // Convert spherical coordinates to Cartesian coordinates
+    //     let x = phi.sin() * theta.cos();
+    //     let y = phi.sin() * theta.sin();
+    //     let z = phi.cos();
+
+    //     // Create the local coordinate system aligned with the normal vector
+    //     let w = normal;
+    //     let up = if w.x.abs() > 0.1 {
+    //         Vec3{x:0.0, y:1.0, z:0.0}
+    //     } else {
+    //         Vec3{x:1.0, y:0.0, z:0.0}
+    //     };
+    //     let u = up.cross(&w).normalize();
+    //     let v = w.cross(&u);
+
+    //     // Transform the sampled direction to world coordinates
+    //     u * x + v * y + *w * z
+    // }
+
 
     pub fn sphere_bounce() -> Vec3 {
         let mut ray_out = Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*2.0-Vec3{x:1.0, y:1.0, z:1.0};
@@ -278,6 +301,57 @@ impl Vec3 {
             z: v.z,
         }
     }
+
+    pub fn rainbow_colors(value: f32) -> Vec3 {
+        let value = value.min(1.0).max(0.0);
+
+        if value < 0.25 {
+            let h = value*4.0;
+            return Vec3{x:h, y:0.0, z:0.0}
+        } else if value < 0.5 {
+            let h = (value-0.25)*4.0;
+            return Vec3{x:1.0-h, y:h, z:0.0}
+        } else if value < 0.75 {
+            let h = (value-0.5)*4.0;
+            return Vec3{x:0.0, y:1.0-h, z:h}
+        } else {
+            let h = (value-0.75)*4.0;
+            return Vec3{x:0.0, y:0.0, z:1.0-h}
+        }
+    }
+
+    pub fn rainbow_colors_inverse(color: Vec3) -> f32 {
+        if color.x >= 0.0 && color.y == 0.0 {
+            return color.x/4.0
+        } else if color.x >= 0.0 && color.y >= 0.0 && color.z == 0.0 {
+            return 0.25+color.y/4.0
+        } else if color.x == 0.0 && color.y >= 0.0 && color.z >= 0.0 {
+            return 0.5+color.z/4.0
+        } else if color.x == 0.0 && color.y == 0.0 && color.z >= 0.0 {
+            return 0.75+(1.0-color.z)/4.0
+        } else {
+            println!("{:?}","ERROR in rainbow_color_inverse");
+            return 1.0
+        }
+    }
+
+    // pub fn rainbow_colors(value: f32) -> Vec3 {
+    //     let value = value.min(1.0).max(0.0);
+    
+    //     if value < 0.25 {
+    //         let h = value * 4.0; // Scale value to [0, 1] range
+    //         return Vec3 { x:h, y:0.0, z: 0.0 };
+    //     } else if value < 0.5 {
+    //         let h = (value - 0.25)* 2.0; // Scale value to [0, 1] range
+    //         return Vec3 { x: 1.0 - h, y: h, z: 0.0 };
+    //     } else if value < 0.75 {
+    //         let h = (value - 0.5) * 2.0; // Scale value to [0, 1] range
+    //         return Vec3 { x: 0.0, y: 1.0 - h, z: h };
+    //     } else {
+    //         let h = (value - 0.75) * 2.0; // Scale value to [0, 1] range
+    //         return Vec3 { x: h, y: 0.0, z: 1.0 - h };
+    //     }
+    // }
 
     // def glossy(ray, normal, max_angle):
     // v_rot0 = multiply(rot_vector180(normal, ray), -1)

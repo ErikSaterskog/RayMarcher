@@ -2,7 +2,7 @@ use image;
 use image::GenericImageView;
 use image::DynamicImage;
 
-use crate::Op::{Union, SmoothUnion, Cut, Intersection, Move, RotateX, RotateY, RotateZ, Scale, Round, Sphere, Cube, Torus, Plane, CappedCone, Ellipsoid, Ellipsoid2, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
+use crate::Op::{Union, SmoothUnion, Cut, Intersection, Move, RotateX, RotateY, RotateZ, Scale, Round, Sphere, Cube, Torus, Plane, Prism, CappedCone, Ellipsoid, Ellipsoid2, Line, InfRep, SinDistortHeight, MirrorZ, SwirlY};
 
 use crate::lerp;
 use crate::vec::ObjectData;
@@ -41,6 +41,7 @@ pub enum Op{
     Ellipsoid2(Vec3, ObjectData),
     Line(Vec3, Vec3, f32, ObjectData),
     Plane(f32, ObjectData),
+    Prism(Vec2, ObjectData),
     Move(Box<Op>, Vec3),
     RotateX(Box<Op>, f32),
     RotateY(Box<Op>, f32),
@@ -53,6 +54,7 @@ pub enum Op{
     Round(Box<Op>, f32),
     Texturize(Box<Op>, DynamicImage, Vec3, Vec3),    //TODO tes with "&static str"  / String
     Frac(ObjectData),
+    Frac2(ObjectData),
 }
 
 impl Op { 
@@ -177,6 +179,10 @@ impl Op {
             }
             Self::Plane(h, plane_attributes) => {
                 return Surfacepoint{dist: h-ray_pos.y, attributes: *plane_attributes};
+            }
+            Self::Prism(a, prism_attributes) => {
+                let q = Vec3::abs(&ray_pos);
+                return Surfacepoint{dist: (q.z-a.y).max((q.x*0.866025+ray_pos.y*0.5).max(-ray_pos.y)-a.x*0.5), attributes: *prism_attributes};
             }
             Self::Move(a,vec) => {
                 return a.get_nearest_point(ray_pos - *vec)
@@ -304,7 +310,44 @@ impl Op {
                 // }
                 //#endif
                   
-                return Surfacepoint{dist: d, attributes: *frac_attributes}      
+                return Surfacepoint{dist: d, attributes: *frac_attributes}
+            }
+
+            Self::Frac2 (frac2_attributes) => {
+                let mut z = ray_pos;
+                let mut dr = 1.0;
+                let mut r = 0.0;
+                let bailout = 10.0;
+                let power = 6.0;
+                let iterations = 100;
+                for i in 0..iterations {
+                    r = Vec3::len(&z);
+                    if r > bailout {break};
+                    
+                    // convert to polar coordinates
+                    let mut theta = (z.z/r).acos();
+                    let mut phi = (z.y).atan2(z.x);
+                    dr = r.powf(power-1.0)*power*dr + 1.0;
+                    
+                    // scale and rotate the point
+                    let zr = r.powf(power);
+                    let theta = theta*power;
+                    let phi = phi*power;
+                    
+                    // convert back to cartesian coordinates
+                    z = Vec3{x:theta.sin()*phi.cos(), y:phi.sin()*theta.sin(), z:theta.cos()}*zr;
+                    z = z + ray_pos;
+                }
+                //println!("{:?}",r);
+                // let frac2_attributes = ObjectData{
+                //     color: Vec3::rainbow_colors(r.log10() as f32 / 7.0 as f32),
+                //     reflectance: 1.0,
+                //     surface_model: 1,
+                //     emission_rate: 0.0,
+                //     refractive_index: 1.0,
+                // };
+                //let frac2_attributes.color = Vec3::rainbow_colors(r as f32 / bailout as f32);
+                return Surfacepoint{dist: 0.5*r.log(10.0)*r/dr, attributes: *frac2_attributes};
             }
         }
     }

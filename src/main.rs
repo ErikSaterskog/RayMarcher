@@ -1,4 +1,5 @@
 use image::RgbImage;
+use lighting::get_rayleigh_color;
 use ndarray::Array3;
 use std::time::Instant;
 
@@ -60,14 +61,7 @@ fn vec_to_image(img: Vec<Vec<Vec3>>, filename: &str) -> () {
 fn ray(
     objects: &Op,
     mut ray_data: RayData,
-    //start_pos: Vec3,
-    //u_vec: Vec3,
-    //bounce_depth: u8,
-    //refractive_index: f32,
-    //fog_collision_check: bool,
-    //initial: bool,
 ) -> (Vec3, bool) {
-
 
     //let mut ray_pos = start_pos.clone();
     let mut total_color = Vec3::zeros();
@@ -95,6 +89,7 @@ fn ray(
         let mut normal = Vec3::zeros();
         let mut cum_indirect_color = Vec3::zeros();
         let mut initial_splits_var = INITIAL_SPLITS;
+
         //let mut new_ray_data = ray_data.clone();
         if !ray_data.initial {
             initial_splits_var = 1
@@ -114,16 +109,17 @@ fn ray(
         //check if outside scene
         if Vec3::len(&ray_data.ray_pos) > MAX_DISTANCE {
 
-            hit = false;
+            //let rayleigh_color = get_rayleigh_color(ray_data.origin, ray_data.ray_pos);
+            //return (rayleigh_color, false); 
+
             let h = (0.0f32).max(ray_data.u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
             let r = lerp(BACKGROUND_COLOR_1.x, BACKGROUND_COLOR_2.x, h);
             let g = lerp(BACKGROUND_COLOR_1.y, BACKGROUND_COLOR_2.y, h);
             let b = lerp(BACKGROUND_COLOR_1.z, BACKGROUND_COLOR_2.z, h);
             
-            return (Vec3{x:r, y:g, z:b}, hit);
+            return (Vec3{x:r, y:g, z:b}, false);
         }
-        
         
 
         //check if hit
@@ -132,7 +128,15 @@ fn ray(
                 return (MAX_BOUNCE_COLOR, true)
             }
             
+            
+            //let rayleigh_color = get_rayleigh_color(ray_data.origin, ray_data.ray_pos);
+            //return (rayleigh_color, true);  
+
+
             hit = true;
+            ray_data.bounce_depth += 1;
+            ray_data.origin = ray_data.ray_pos;
+
             if !fog_hit {        //find normal
                 let distc = objects.get_nearest_point(Vec3{x:ray_data.ray_pos.x, y:ray_data.ray_pos.y, z:ray_data.ray_pos.z}).dist;        
                 let distx = objects.get_nearest_point(Vec3{x:ray_data.ray_pos.x+EPSILON2, y:ray_data.ray_pos.y, z:ray_data.ray_pos.z}).dist;                 
@@ -150,7 +154,6 @@ fn ray(
                 if ray_data.refractive_index == new_refractive_index {  //TODO, BAD WAY OF DOINGS THIS
                     new_refractive_index = START_REFRACTIVE_INDEX;
                 }
-                ray_data.bounce_depth += 1;
                 for _ in 0..initial_splits_var {
                     let indirect_color = lighting::get_indirect_lighting(
                         ray_data,
@@ -179,26 +182,31 @@ fn ray(
                 }
                 if surface_model == 3 {
                     //refreaction and reflection
-                    total_color = cum_indirect_color;
+                    total_color = cum_indirect_color.vec_mult(&material_color);
                     return (total_color, hit)
                 }
                 if surface_model == 4 {
                     //Fog diffuse
-                    let direct_color = get_direct_lighting(
+                    //let rayleigh_color = get_rayleigh_color(ray_data.origin, ray_data.ray_pos);
+                    //return (rayleigh_color, true);   
+                    //return (rayleigh_color, true)
+
+                    let mut direct_color = get_direct_lighting(
                         ray_data.ray_pos,
                         ray_data.u_vec,
                         &objects,
                         normal,
                         fog_hit,
                     );
+
                     total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + cum_indirect_color));
                     return (total_color, hit)
+                    
                 }//tomato reflection to be implemetned...
             }
 
             if SUN_LIGHT_METHOD == 2 { 
                 if emission_rate < 0.001 {
-                    ray_data.bounce_depth += 1;
                     for _ in 0..initial_splits_var {
                         let indirect_color = lighting::get_indirect_lighting(
                             ray_data,
@@ -220,7 +228,7 @@ fn ray(
                     }
                     if surface_model == 3 {
                         //refraction and reflection
-                        total_color = cum_indirect_color;
+                        total_color = cum_indirect_color.vec_mult(&material_color);
                         return (total_color, hit)
                     }
                     if surface_model == 4 {
@@ -234,6 +242,7 @@ fn ray(
                         );
                         total_color = (FOG_COLOR).vec_mult(&(direct_color*SUN_MULTIPLIER + cum_indirect_color));
                         return (total_color, hit)
+                        //return (rayleigh_color, true)
                     }
                 } else {
                     total_color = material_color*emission_rate;
@@ -246,25 +255,26 @@ fn ray(
 }
 
 
-//TODO: rays start from an area, to create depth of field
-
-const EPSILON1: f32 = 0.004;  //hit 0.0000004
-const EPSILON2: f32 = 0.001;  //normal
-const EPSILON3: f32 = 0.001;  //lightning
-const MAX_BOUNCE_DEPTH: u8 = 5;
+const EPSILON1: f32 = 0.0004;  //hit 0.0000004
+const EPSILON2: f32 = 0.0001;  //normal
+const EPSILON3: f32 = 0.0001;  //lightning
+const MAX_BOUNCE_DEPTH: u8 = 10;
 const MAX_BOUNCE_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
 const NAN_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:1.0};
-const MAX_DISTANCE: f32 = 100.0;
-const NUM_OF_SAMPLES: i32 = 4;
-const INITIAL_SPLITS: i8 = 5;
+const MAX_DISTANCE: f32 = 10.0;
+const NUM_OF_SAMPLES: i32 = 5;
+const INITIAL_SPLITS: i8 = 1;
 
-const DEPTH_OF_FIELD: bool = true;
-const DEPTH_OF_FIELD_CONST: f32 = 0.2;
+const DEPTH_OF_FIELD: bool = false;
+const DEPTH_OF_FIELD_CONST: f32 = 0.02;
 const FOCAL_DEPTH_DISTANCE: f32 = 4.0;
 const SQUARE_DOF: bool = false;
 
+const RGB_RAYS: bool = false;
+//const RGB_STEPS: i8 = 3;
+
 const FOG: bool = false;
-const FOG_LAMBDA: f32 = 1.0/8.0;
+const FOG_LAMBDA: f32 = 1.0/20.0;
 
 const NUM_BIN_WIDTH: usize = 1080/2;
 //const NUM_BIN_WIDTH: usize = 720/2;
@@ -277,22 +287,48 @@ const CANVAS_HEIGHT: f32 = FOCAL_DEPTH_DISTANCE*2.0;
 //const CANVAS_HEIGHT: f32 = FOCAL_DEPTH_DISTANCE*1.123;
 
 const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
-const SUN_LIGHT_METHOD: i8 = 1;             //TODO method 3,4. one initial ray, which then splits into multiple. 
+const SUN_LIGHT_METHOD: i8 = 1; 
 const SUN_MULTIPLIER: f32 = 2.5;
 const SUN_COLOR: Vec3 = Vec3{x:0.95, y: 0.99, z: 0.9};
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
 const MAX_STEPS: u32 = 1000;
-const MAX_STEPS_COLOR: Vec3 = Vec3{x:1.0, y:0.0, z:0.0};
+const MAX_STEPS_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
 const TIME_APPROX: bool = true;
 const TIME_APPROX_NUM: u32 = 100;
 const WRITE_OPTIONS: bool = true;
 
 const FOG_COLOR: Vec3 = Vec3{x: 0.9, y: 0.9, z: 0.9};
+const SUN_POSITION: Vec3 = Vec3{x:-100.0, y:-100.0, z:-100.0};
 //const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
 //const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
- const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.05, y: 0.05, z: 0.6};
- const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.53, y: 0.81, z: 0.92};
+const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.05, y: 0.05, z: 0.6};
+const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.53, y: 0.81, z: 0.92};
+
+const RAYLEIGH: bool = true;
+const ATMOSPHERE_HEIGHT: f32 = 100.0;
+const DENSITY_FALLOFF: f32 = 10.0;
+const SCATTERING_STRENGTH: f32 = 0.01;
+const WAVELENGTHS: Vec3 = Vec3{
+    x:700.0,
+    y:530.0,
+    z:440.0,
+};
+const SCATTER_COEFF: Vec3 = Vec3{
+    x: 0.1 * SCATTERING_STRENGTH,
+    y: 0.32 * SCATTERING_STRENGTH,
+    z: 0.68 * SCATTERING_STRENGTH,
+};
+const EYE_POS: Vec3 = Vec3 {
+    x: 0.0f32,
+    y: 0.0f32,
+    z: 0.0f32,
+};
+const CANVAS_POS: Vec3 = Vec3 {
+    x: FOCAL_DEPTH_DISTANCE,
+    y: 0.0f32,
+    z: 0.0f32,
+};
 
 
 fn main() {
@@ -306,22 +342,14 @@ fn main() {
     let mut bin_pos_array: Array3<f32> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //x,y,z
     //let image_array: Array3<u8> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //R,G,B
 
-    let eye_pos = Vec3::zeros();
-    let canvas_pos = Vec3 {
-        x: FOCAL_DEPTH_DISTANCE,
-        y: 0.0f32,
-        z: 0.0f32,
-    };
-
-
     let objects = scene();
 
     //loop to find bin positions
     for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
         *v = match c {
-            0 => canvas_pos.x,                                                       //x
-            1 => canvas_pos.y - CANVAS_WIDTH / 2.0 + (i as f32 + 0.5) * bin_width,   //y
-            2 => canvas_pos.z - CANVAS_HEIGHT / 2.0 + (j as f32 + 0.5) * bin_height, //z
+            0 => CANVAS_POS.x,                                                       //x
+            1 => CANVAS_POS.y - CANVAS_WIDTH / 2.0 + (i as f32 + 0.5) * bin_width,   //y
+            2 => CANVAS_POS.z - CANVAS_HEIGHT / 2.0 + (j as f32 + 0.5) * bin_height, //z
             _ => unreachable!(),
         };
     }
@@ -374,20 +402,12 @@ fn main() {
             
             let mut vector = Vec3::zeros();  //TODO remove this line
             
-            vector = end_pos - eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+            vector = end_pos - EYE_POS + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
 
             let u_vector = Vec3::normalize(&vector);
-            // (_, _) = ray(
-            //     eye_pos,
-            //     u_vector,
-            //     &objects,
-            //     0u8,
-            //     START_REFRACTIVE_INDEX,
-            //     true,
-            //     true,
-            // );
+
             let mut ray_data = RayData::basic();
-            ray_data.ray_pos = eye_pos;
+            ray_data.ray_pos = EYE_POS;
             ray_data.u_vec = u_vector;
             ray_data.refractive_index = START_REFRACTIVE_INDEX;
 
@@ -416,8 +436,8 @@ fn main() {
             let mut tcolor = Vec3{x:0.0, y:0.0, z:0.0};
             
             for _k in 0..NUM_OF_SAMPLES {
-                let mut vector = Vec3::zeros();  //TODO remove this line
-                let mut new_eye_pos = eye_pos;
+                //let mut vector = Vec3::zeros();  //TODO remove this line
+                let mut new_eye_pos = EYE_POS;
                 if DEPTH_OF_FIELD {
                     let a = rand::random::<f32>();
                     let b = rand::random::<f32>();
@@ -432,29 +452,40 @@ fn main() {
                     }
                     new_eye_pos = new_eye_pos + Vec3{x:0.0, y:dy, z:dz}
                 }
-                vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                let vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
                 let u_vector = Vec3::normalize(&vector);
-                // (color, _) = ray(
-                //     new_eye_pos,
-                //     u_vector,
-                //     &objects,
-                //     0u8,
-                //     START_REFRACTIVE_INDEX,
-                //     true,
-                //     true,
-                // );
-                let mut ray_data = RayData::basic();
-                ray_data.ray_pos = new_eye_pos;
-                ray_data.u_vec = u_vector;
-                ray_data.refractive_index = START_REFRACTIVE_INDEX;
 
+                if RGB_RAYS {  //Shoot RGB-rays
+                    //for i in 0..RGB_STEPS {
+                    //    let value = i as f32 / RGB_STEPS as f32;
+                    for i in [0.25, 0.5, 0.75] {
+                        let mut ray_data = RayData::basic();
+                        ray_data.color = Vec3::rainbow_colors(i);
+                        ray_data.pol_angle = rand::random::<f32>()*2.0*PI;
+                        ray_data.ray_pos = new_eye_pos;
+                        ray_data.origin = new_eye_pos;
+                        ray_data.u_vec = u_vector;
+                        ray_data.refractive_index = START_REFRACTIVE_INDEX;
 
-                (color,_) = ray(
-                    &objects,
-                    ray_data,
-                );
+                        (color,_) = ray(
+                            &objects,
+                            ray_data,
+                        );
+                        tcolor = tcolor + color.vec_mult(&ray_data.color)
+                    }
+                } else {
+                    let mut ray_data = RayData::basic();
+                    ray_data.color = Vec3{x:1.0, y:1.0, z:1.0};
+                    ray_data.ray_pos = new_eye_pos;
+                    ray_data.u_vec = u_vector;
+                    ray_data.refractive_index = START_REFRACTIVE_INDEX;
 
-                tcolor = tcolor + color
+                    (color,_) = ray(
+                        &objects,
+                        ray_data,
+                    );
+                    tcolor = tcolor + color
+                }
             }
             tcolor = tcolor/NUM_OF_SAMPLES as f32;
             tcolor*255.0
