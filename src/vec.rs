@@ -335,6 +335,14 @@ impl Vec3 {
         }
     }
 
+    pub fn clamp(vec: Vec3, min: f32, max:f32) -> Vec3 {
+        Vec3 { 
+            x: num::clamp(vec.x, min, max),
+            y: num::clamp(vec.y, min, max),
+            z: num::clamp(vec.z, min, max),
+        }
+    }
+
     // pub fn rainbow_colors(value: f32) -> Vec3 {
     //     let value = value.min(1.0).max(0.0);
     

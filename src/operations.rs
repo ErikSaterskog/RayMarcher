@@ -55,6 +55,8 @@ pub enum Op{
     Texturize(Box<Op>, DynamicImage, Vec3, Vec3),    //TODO tes with "&static str"  / String
     Frac(ObjectData),
     Frac2(ObjectData),
+    Frac3(ObjectData),
+    Frac4(ObjectData),
 }
 
 impl Op { 
@@ -349,6 +351,148 @@ impl Op {
                 //let frac2_attributes.color = Vec3::rainbow_colors(r as f32 / bailout as f32);
                 return Surfacepoint{dist: 0.5*r.log(10.0)*r/dr, attributes: *frac2_attributes};
             }
+            Self::Frac3 (frac3_attributes) => {
+                
+                let iterations = 30;
+                let mut x = ray_pos.x;
+                let mut y = ray_pos.y;
+                let mut z = ray_pos.z;
+                let mut defactor = 1.0;
+
+                for i in 0..iterations {
+                    //inside iteration loop:
+                
+                    let fixed_radius = 1.0;
+                    let f_r2 = fixed_radius * fixed_radius;
+                    let min_radius = 0.5;
+                    let m_r2 = min_radius * min_radius;
+
+                    if x > 1.0 {
+                        x = 2.0 - x;
+                    } else if x < -1.0 {
+                        x = -2.0 - x
+                    };
+
+                    if y > 1.0 {
+                        y = 2.0 - y;
+                    } else if y < -1.0 {
+                        y = -2.0 - y};
+
+                    if z > 1.0 {
+                        z = 2.0 - z;
+                    } else if z < -1.0 {
+                        z = -2.0 - z
+                    };
+
+                    let r2 = x*x + y*y + z*z;
+
+                    if r2 < m_r2 {
+                    x = x * f_r2 / m_r2;
+                    y = y * f_r2 / m_r2;
+                    z = z * f_r2 / m_r2;
+                    defactor = defactor * f_r2 / m_r2;
+                    } else if r2 < f_r2 {
+                    x = x * f_r2 / r2;
+                    y = y * f_r2 / r2;
+                    z = z * f_r2 / r2;
+                    defactor *= f_r2 / r2;
+                    }
+
+                    //x = x * scale + cx;
+                    //y = y * scale + cy;
+                    //z = z * scale + cz;
+                    //defactor *= scale;
+                }
+                let distance = (x*x+y*y+z*z).sqrt()/(defactor).abs();
+                return Surfacepoint{dist: distance, attributes: *frac3_attributes};
+            }
+            // Self::Frac4 (frac4_attributes) => {
+            //     //function mandelbox_distance_estimator(x, y, z, max_iter, scale, fold_scale, bailout):
+            //     let mut real = ray_pos.x;
+            //     let mut imag = ray_pos.y;
+            //     let mut comp = ray_pos.z;
+            //     let mut r2 = 0.0;
+            //     let mut r = 0.0;
+            //     let mut theta = 0.0;
+            //     let mut phi = 0.0;
+
+            //     let scale = 1.0;
+            //     let max_iter = 100;
+            //     let fold_scale = 1.5;
+            //     let bailout =  10.0;
+            //     let scale_sq = scale * scale;
+                
+                
+            //     for _ in 0..max_iter {
+            //         r2 = real * real + imag * imag + comp * comp;
+            //         if r2 > bailout {
+            //             let distance = 0.5 * (r2.sqrt()).ln() / r2.sqrt();
+            //             println!("{:?}", distance);
+            //             return Surfacepoint{dist: distance, attributes: *frac4_attributes};
+            //         }
+            //         // Scale and fold
+            //         real = (real * fold_scale) - scale;
+            //         imag = (imag * fold_scale) - scale;
+            //         comp = (comp * fold_scale) - scale;
+
+            //         // Scale and rotate
+            //         r = (real * real + imag * imag + comp * comp).sqrt();
+            //         theta = (imag).atan2(real);
+            //         phi = (comp).atan2((real * real + imag * imag).sqrt());
+                    
+            //         real = r * (theta).sin() * scale_sq + ray_pos.x;
+            //         imag = r * (theta).cos() * (phi).sin() * scale_sq + ray_pos.y;
+            //         comp = r * (theta).cos() * (phi).cos() * scale_sq + ray_pos.z;
+            //     }
+            //     //let distance = 0.5 * (r2).ln() * r / (r2).sqrt();
+            //     let distance = 0.0;
+            //     return Surfacepoint{dist: distance, attributes: *frac4_attributes};
+            // }
+            Self::Frac4 (frac4_attributes) => {
+
+                let scale: f32 = 2.0;
+                let max_iter = 30;
+                let fold_scale = 1.5;
+                //let bailout =  10.0;
+                let scale_sq = scale * scale;
+                
+                let offset = ray_pos;
+                let mut z = ray_pos;
+                let mut dr = 1.0;
+                for _ in 0..max_iter {
+                    (z,dr) = box_fold(z,dr);       // Reflect
+                    (z,dr) = sphere_fold(z,dr);    // Sphere Inversion
+                     
+                    z = z*scale + offset;  // Scale & Translate
+                    dr = dr*(scale.abs())+1.0;
+                }
+                let r = Vec3::len(&z);
+                return Surfacepoint{dist: r/(dr.abs()), attributes: *frac4_attributes};
+            }
         }
     }
+}
+
+pub fn sphere_fold(mut z: Vec3, mut dz: f32)  -> (Vec3, f32) {
+	let r2 = Vec3::dot(&z,&z);
+    let m_r2 = 0.5;
+    let f_r2 = 1.0;
+	if r2 < m_r2 { 
+		// linear inner scaling
+		let temp = f_r2/m_r2;
+		z = z*temp;
+		dz = dz*temp;
+	} else if r2 < f_r2 { 
+		// this is the actual sphere inversion
+		let temp =f_r2/r2;
+		z  = z*temp;
+		dz = dz*temp;
+	}
+    return (z, dz)
+}
+
+pub fn box_fold(mut z: Vec3, dz: f32) -> (Vec3, f32) {
+    let f_lim = 1.0;
+	z = Vec3::clamp(z, -f_lim, f_lim) * 2.0 - z;
+    return (z, dz)
 }

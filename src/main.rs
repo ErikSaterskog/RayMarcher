@@ -43,7 +43,7 @@ fn lerp(a: f32, b: f32, h: f32) -> f32 {
     return a*h+b*(1.0f32-h)
 } 
 
-fn vec_to_image(img: Vec<Vec<Vec3>>, filename: &str) -> () {
+fn vec_to_image(img: Vec<Vec<Vec3>>, filename: &String) -> () {
     let sizey = img.len() as u32;
     let sizex = img[0].len() as u32;
     let mut imgbuf = image::ImageBuffer::new(sizex, sizey);
@@ -261,8 +261,8 @@ const EPSILON3: f32 = 0.0001;  //lightning
 const MAX_BOUNCE_DEPTH: u8 = 10;
 const MAX_BOUNCE_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:0.0};
 const NAN_COLOR: Vec3 = Vec3{x:0.0, y:0.0, z:1.0};
-const MAX_DISTANCE: f32 = 10.0;
-const NUM_OF_SAMPLES: i32 = 5;
+const MAX_DISTANCE: f32 = 20.0;
+const NUM_OF_SAMPLES: i32 = 10;
 const INITIAL_SPLITS: i8 = 1;
 
 const DEPTH_OF_FIELD: bool = false;
@@ -274,7 +274,7 @@ const RGB_RAYS: bool = false;
 //const RGB_STEPS: i8 = 3;
 
 const FOG: bool = false;
-const FOG_LAMBDA: f32 = 1.0/20.0;
+const FOG_LAMBDA: f32 = 1.0/15.0;
 
 const NUM_BIN_WIDTH: usize = 1080/2;
 //const NUM_BIN_WIDTH: usize = 720/2;
@@ -288,7 +288,7 @@ const CANVAS_HEIGHT: f32 = FOCAL_DEPTH_DISTANCE*2.0;
 
 const STEP_LENGTH_MULTIPLIER: f32 = 1.0;
 const SUN_LIGHT_METHOD: i8 = 1; 
-const SUN_MULTIPLIER: f32 = 2.5;
+const SUN_MULTIPLIER: f32 = 2.0;
 const SUN_COLOR: Vec3 = Vec3{x:0.95, y: 0.99, z: 0.9};
 const START_REFRACTIVE_INDEX: f32 = 1.0;
 
@@ -299,13 +299,13 @@ const TIME_APPROX_NUM: u32 = 100;
 const WRITE_OPTIONS: bool = true;
 
 const FOG_COLOR: Vec3 = Vec3{x: 0.9, y: 0.9, z: 0.9};
-const SUN_POSITION: Vec3 = Vec3{x:-100.0, y:-100.0, z:-100.0};
+const SUN_POSITION: Vec3 = Vec3{x:-10.0, y:-100.0, z:-100.0};
 //const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
 //const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
 const BACKGROUND_COLOR_1: Vec3 = Vec3 {x: 0.05, y: 0.05, z: 0.6};
 const BACKGROUND_COLOR_2: Vec3 = Vec3 {x: 0.53, y: 0.81, z: 0.92};
 
-const RAYLEIGH: bool = true;
+const RAYLEIGH: bool = false;
 const ATMOSPHERE_HEIGHT: f32 = 100.0;
 const DENSITY_FALLOFF: f32 = 10.0;
 const SCATTERING_STRENGTH: f32 = 0.01;
@@ -332,138 +332,153 @@ const CANVAS_POS: Vec3 = Vec3 {
 
 
 fn main() {
-        
-    let progress = Arc::new(Mutex::new(0.0));
-    let now = Instant::now();
+    
+    for frame in 0..100 {
+        let progress = Arc::new(Mutex::new(0.0));
+        let now = Instant::now();
 
-    let bin_width = CANVAS_WIDTH / (NUM_BIN_WIDTH as f32);
-    let bin_height = CANVAS_HEIGHT / (NUM_BIN_HEIGHT as f32);
+        let bin_width = CANVAS_WIDTH / (NUM_BIN_WIDTH as f32);
+        let bin_height = CANVAS_HEIGHT / (NUM_BIN_HEIGHT as f32);
 
-    let mut bin_pos_array: Array3<f32> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //x,y,z
-    //let image_array: Array3<u8> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //R,G,B
+        let mut bin_pos_array: Array3<f32> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //x,y,z
+        //let image_array: Array3<u8> = Array3::zeros((NUM_BIN_WIDTH, NUM_BIN_HEIGHT, 3)); //R,G,B
 
-    let objects = scene();
+        //let objects = scene();
+        let objects = scene(frame);
 
-    //loop to find bin positions
-    for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
-        *v = match c {
-            0 => CANVAS_POS.x,                                                       //x
-            1 => CANVAS_POS.y - CANVAS_WIDTH / 2.0 + (i as f32 + 0.5) * bin_width,   //y
-            2 => CANVAS_POS.z - CANVAS_HEIGHT / 2.0 + (j as f32 + 0.5) * bin_height, //z
-            _ => unreachable!(),
-        };
-    }
-
-    if WRITE_OPTIONS {
-        // Create a file
-        let mut data_file = File::create("Options1.txt").expect("creation failed");
-        // Write contents to the file
-        let eps11 = "EPSILON1: ";
-        let eps12 = EPSILON1.to_string();
-        let eps13 = format!("{}{}\n", eps11, eps12);
-
-        let eps21 = "EPSILON2: ";
-        let eps22 = EPSILON2.to_string();
-        let eps23 = format!("{}{}\n", eps21, eps22);
-
-        let eps31 = "EPSILON3: ";
-        let eps32 = EPSILON2.to_string();
-        let eps33 = format!("{}{}\n", eps31, eps32);
-        
-        let ms1 = "MAX STEPS: ";
-        let ms2 = MAX_STEPS.to_string();
-        let ms3 = format!("{}{}\n", ms1, ms2);
-
-        let slm1 = "STEP LENGTH MULTIPLIER: ";
-        let slm2 = STEP_LENGTH_MULTIPLIER.to_string();
-        let slm3 = format!("{}{}\n", slm1, slm2);
-        
-        data_file.write((eps13).as_bytes()).expect("write failed");
-        data_file.write((eps23).as_bytes()).expect("write failed");
-        data_file.write((eps33).as_bytes()).expect("write failed");
-        data_file.write((ms3).as_bytes()).expect("write failed");
-        data_file.write((slm3).as_bytes()).expect("write failed");
-
-        println!("Created file Options1.txt");
-    }
-
-
-    //Give aproximation of time
-    if TIME_APPROX {
-        let now_approx = Instant::now();
-        for _ in 0..TIME_APPROX_NUM {
-            let i = (rand::random::<f32>()*NUM_BIN_WIDTH as f32) as usize;
-            let j = (rand::random::<f32>()*NUM_BIN_HEIGHT as f32) as usize;
-
-            let x = bin_pos_array[[i, j, 0]];
-            let y = bin_pos_array[[i, j, 1]];
-            let z = bin_pos_array[[i, j, 2]];
-            let end_pos = Vec3{x:x, y:y, z:z};
-            
-            let mut vector = Vec3::zeros();  //TODO remove this line
-            
-            vector = end_pos - EYE_POS + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
-
-            let u_vector = Vec3::normalize(&vector);
-
-            let mut ray_data = RayData::basic();
-            ray_data.ray_pos = EYE_POS;
-            ray_data.u_vec = u_vector;
-            ray_data.refractive_index = START_REFRACTIVE_INDEX;
-
-            (_, _) = ray(
-                &objects,
-                ray_data,
-            );
+        //loop to find bin positions
+        for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
+            *v = match c {
+                0 => CANVAS_POS.x,                                                       //x
+                1 => CANVAS_POS.y - CANVAS_WIDTH / 2.0 + (i as f32 + 0.5) * bin_width,   //y
+                2 => CANVAS_POS.z - CANVAS_HEIGHT / 2.0 + (j as f32 + 0.5) * bin_height, //z
+                _ => unreachable!(),
+            };
         }
-        println!("ETA: {:?}",(now_approx.elapsed()/(TIME_APPROX_NUM*2))*NUM_BIN_WIDTH as u32*NUM_BIN_HEIGHT as u32*NUM_OF_SAMPLES as u32);
-    }
 
+        if WRITE_OPTIONS {
+            // Create a file
+            let mut data_file = File::create("Options1.txt").expect("creation failed");
+            // Write contents to the file
+            let eps11 = "EPSILON1: ";
+            let eps12 = EPSILON1.to_string();
+            let eps13 = format!("{}{}\n", eps11, eps12);
 
+            let eps21 = "EPSILON2: ";
+            let eps22 = EPSILON2.to_string();
+            let eps23 = format!("{}{}\n", eps21, eps22);
 
-    //loop to shoot rays parallell     /into_par_iter().map
-    let image_array: Vec<Vec<Vec3>> = (0..NUM_BIN_WIDTH).into_par_iter().map(|i| {
-        let row: Vec<Vec3> = (0..NUM_BIN_HEIGHT).into_par_iter().map(|j| {
-
-            let x = bin_pos_array[[i, j, 0]];
-            let y = bin_pos_array[[i, j, 1]];
-            let z = bin_pos_array[[i, j, 2]];
-            let end_pos = Vec3{x:x, y:y, z:z};
-            //let vector = end_pos - eye_pos;
-            //let u_vector = Vec3::normalize(&vector);
-
-            let mut color = Vec3{x:0.0, y:0.0, z:0.0};
-            let mut tcolor = Vec3{x:0.0, y:0.0, z:0.0};
+            let eps31 = "EPSILON3: ";
+            let eps32 = EPSILON2.to_string();
+            let eps33 = format!("{}{}\n", eps31, eps32);
             
-            for _k in 0..NUM_OF_SAMPLES {
-                //let mut vector = Vec3::zeros();  //TODO remove this line
-                let mut new_eye_pos = EYE_POS;
-                if DEPTH_OF_FIELD {
-                    let a = rand::random::<f32>();
-                    let b = rand::random::<f32>();
-                    let mut dy = 0.0;
-                    let mut dz = 0.0;
-                    if SQUARE_DOF {
-                        dy = (a-0.5)*DEPTH_OF_FIELD_CONST;
-                        dz = (b-0.5)*DEPTH_OF_FIELD_CONST;
-                    } else {
-                        dy = 0.5*(a*DEPTH_OF_FIELD_CONST).sqrt()*(b*2.0*PI).cos();
-                        dz = 0.5*(a*DEPTH_OF_FIELD_CONST).sqrt()*(b*2.0*PI).sin();
-                    }
-                    new_eye_pos = new_eye_pos + Vec3{x:0.0, y:dy, z:dz}
-                }
-                let vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+            let ms1 = "MAX STEPS: ";
+            let ms2 = MAX_STEPS.to_string();
+            let ms3 = format!("{}{}\n", ms1, ms2);
+
+            let slm1 = "STEP LENGTH MULTIPLIER: ";
+            let slm2 = STEP_LENGTH_MULTIPLIER.to_string();
+            let slm3 = format!("{}{}\n", slm1, slm2);
+            
+            data_file.write((eps13).as_bytes()).expect("write failed");
+            data_file.write((eps23).as_bytes()).expect("write failed");
+            data_file.write((eps33).as_bytes()).expect("write failed");
+            data_file.write((ms3).as_bytes()).expect("write failed");
+            data_file.write((slm3).as_bytes()).expect("write failed");
+
+            println!("Created file Options1.txt");
+        }
+
+
+        //Give aproximation of time
+        if TIME_APPROX {
+            let now_approx = Instant::now();
+            for _ in 0..TIME_APPROX_NUM {
+                let i = (rand::random::<f32>()*NUM_BIN_WIDTH as f32) as usize;
+                let j = (rand::random::<f32>()*NUM_BIN_HEIGHT as f32) as usize;
+
+                let x = bin_pos_array[[i, j, 0]];
+                let y = bin_pos_array[[i, j, 1]];
+                let z = bin_pos_array[[i, j, 2]];
+                let end_pos = Vec3{x:x, y:y, z:z};
+                
+                let mut vector = Vec3::zeros();  //TODO remove this line
+                
+                vector = end_pos - EYE_POS + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+
                 let u_vector = Vec3::normalize(&vector);
 
-                if RGB_RAYS {  //Shoot RGB-rays
-                    //for i in 0..RGB_STEPS {
-                    //    let value = i as f32 / RGB_STEPS as f32;
-                    for i in [0.25, 0.5, 0.75] {
+                let mut ray_data = RayData::basic();
+                ray_data.ray_pos = EYE_POS;
+                ray_data.u_vec = u_vector;
+                ray_data.refractive_index = START_REFRACTIVE_INDEX;
+
+                (_, _) = ray(
+                    &objects,
+                    ray_data,
+                );
+            }
+            println!("ETA: {:?}",(now_approx.elapsed()/(TIME_APPROX_NUM*2))*NUM_BIN_WIDTH as u32*NUM_BIN_HEIGHT as u32*NUM_OF_SAMPLES as u32);
+        }
+
+
+
+        //loop to shoot rays parallell     /into_par_iter().map
+        let image_array: Vec<Vec<Vec3>> = (0..NUM_BIN_WIDTH).into_par_iter().map(|i| {
+            let row: Vec<Vec3> = (0..NUM_BIN_HEIGHT).into_par_iter().map(|j| {
+
+                let x = bin_pos_array[[i, j, 0]];
+                let y = bin_pos_array[[i, j, 1]];
+                let z = bin_pos_array[[i, j, 2]];
+                let end_pos = Vec3{x:x, y:y, z:z};
+                //let vector = end_pos - eye_pos;
+                //let u_vector = Vec3::normalize(&vector);
+
+                let mut color = Vec3{x:0.0, y:0.0, z:0.0};
+                let mut tcolor = Vec3{x:0.0, y:0.0, z:0.0};
+                
+                for _k in 0..NUM_OF_SAMPLES {
+                    //let mut vector = Vec3::zeros();  //TODO remove this line
+                    let mut new_eye_pos = EYE_POS;
+                    if DEPTH_OF_FIELD {
+                        let a = rand::random::<f32>();
+                        let b = rand::random::<f32>();
+                        let mut dy = 0.0;
+                        let mut dz = 0.0;
+                        if SQUARE_DOF {
+                            dy = (a-0.5)*DEPTH_OF_FIELD_CONST;
+                            dz = (b-0.5)*DEPTH_OF_FIELD_CONST;
+                        } else {
+                            dy = 0.5*(a*DEPTH_OF_FIELD_CONST).sqrt()*(b*2.0*PI).cos();
+                            dz = 0.5*(a*DEPTH_OF_FIELD_CONST).sqrt()*(b*2.0*PI).sin();
+                        }
+                        new_eye_pos = new_eye_pos + Vec3{x:0.0, y:dy, z:dz}
+                    }
+                    let vector = end_pos - new_eye_pos + Vec3{x:0.0, y:(rand::random::<f32>()-0.5)*bin_width, z:(rand::random::<f32>()-0.5)*bin_height};
+                    let u_vector = Vec3::normalize(&vector);
+
+                    if RGB_RAYS {  //Shoot RGB-rays
+                        //for i in 0..RGB_STEPS {
+                        //    let value = i as f32 / RGB_STEPS as f32;
+                        for i in [0.25, 0.5, 0.75] {
+                            let mut ray_data = RayData::basic();
+                            ray_data.color = Vec3::rainbow_colors(i);
+                            ray_data.pol_angle = rand::random::<f32>()*2.0*PI;
+                            ray_data.ray_pos = new_eye_pos;
+                            ray_data.origin = new_eye_pos;
+                            ray_data.u_vec = u_vector;
+                            ray_data.refractive_index = START_REFRACTIVE_INDEX;
+
+                            (color,_) = ray(
+                                &objects,
+                                ray_data,
+                            );
+                            tcolor = tcolor + color.vec_mult(&ray_data.color)
+                        }
+                    } else {
                         let mut ray_data = RayData::basic();
-                        ray_data.color = Vec3::rainbow_colors(i);
-                        ray_data.pol_angle = rand::random::<f32>()*2.0*PI;
+                        ray_data.color = Vec3{x:1.0, y:1.0, z:1.0};
                         ray_data.ray_pos = new_eye_pos;
-                        ray_data.origin = new_eye_pos;
                         ray_data.u_vec = u_vector;
                         ray_data.refractive_index = START_REFRACTIVE_INDEX;
 
@@ -471,36 +486,31 @@ fn main() {
                             &objects,
                             ray_data,
                         );
-                        tcolor = tcolor + color.vec_mult(&ray_data.color)
+                        tcolor = tcolor + color
                     }
-                } else {
-                    let mut ray_data = RayData::basic();
-                    ray_data.color = Vec3{x:1.0, y:1.0, z:1.0};
-                    ray_data.ray_pos = new_eye_pos;
-                    ray_data.u_vec = u_vector;
-                    ray_data.refractive_index = START_REFRACTIVE_INDEX;
-
-                    (color,_) = ray(
-                        &objects,
-                        ray_data,
-                    );
-                    tcolor = tcolor + color
                 }
+                tcolor = tcolor/NUM_OF_SAMPLES as f32;
+                tcolor*255.0
+            }).collect();
+            let mut progress = progress.lock().unwrap();
+            *progress += 1.0;
+            if i%1==0 {
+                print!("\rProgress: {:.3}", *progress/NUM_BIN_WIDTH as f32); 
+                std::io::stdout().flush();   
             }
-            tcolor = tcolor/NUM_OF_SAMPLES as f32;
-            tcolor*255.0
+            row
         }).collect();
-        let mut progress = progress.lock().unwrap();
-        *progress += 1.0;
-        if i%1==0 {
-            print!("\rProgress: {:.3}", *progress/NUM_BIN_WIDTH as f32); 
-            std::io::stdout().flush();   
-        }
-        row
-    }).collect();
 
-    vec_to_image(image_array, "picture1.png");
         
-    let elapsed = now.elapsed();
-    println!("\nTotal time: {:?}", elapsed);
+        let sn1 = frame.to_string();
+        let sn2 = "MovieFrame.png";
+        let sn3 = format!("{}{}", sn1, sn2);
+        //println!("{:?}", &frame.to_string());
+        vec_to_image(image_array, &sn3);
+        //vec_to_image(image_array, &frame.to_string());
+        //vec_to_image(image_array, "picture1.png");
+            
+        let elapsed = now.elapsed();
+        println!("\nTotal time: {:?}", elapsed);
+    }
 }

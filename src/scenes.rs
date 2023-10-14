@@ -26,6 +26,9 @@ use crate::Op::Round;
 use crate::Op::Texturize;
 use crate::Op::Frac;
 use crate::Op::Frac2;
+use crate::Op::Frac3;
+use crate::Op::Frac4;
+
 
 use core::f32::consts::PI;
 
@@ -746,7 +749,24 @@ use crate::vec::Vec2;
 
 
 //Fog in room scene
-// pub fn scene() -> Box<Op> {
+// pub fn scene(frame: i32) -> Box<Op> {
+
+//     let surf_att = ObjectData { 
+//         color: Vec3 { x: 0.9, y: 0.9, z: 0.9},
+//         reflectance: 1.0,
+//         surface_model: 1,
+//         emission_rate: 0.0,
+//         refractive_index: 0.0 
+//     };
+//     let sphere_att = ObjectData { 
+//         color: Vec3 { x: 0.9, y: 0.9, z: 0.9 },
+//         reflectance: 1.0,
+//         surface_model: 3,
+//         emission_rate: 0.0,
+//         refractive_index: 1.5 
+//     };
+
+
 //     //Textures
 //     //let path1 = r"C:\Users\Erik\Documents\Rust_Scripts\RayMarcher\Textures\floor_boards.png";
 //     //let tex1 = image::open(path1).expect("File not found!");
@@ -756,22 +776,22 @@ use crate::vec::Vec2;
 //     //let tex2_scale = 500.0;
     
 
-//     let mut plane = Box::new(Plane(1.0, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 1.0, 0.0));
+//     let mut plane = Box::new(Plane(1.0, surf_att));
 //     //plane = Box::new(Texturize(Box::new(*plane), tex1, Vec3{x:1.0, y:0.0, z:0.0}*tex1_scale, Vec3{x:0.0, y:0.0, z:1.0}*tex1_scale));
 
 //     let room = Cut(
-//         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 0.0, 0.0)),
-//         Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:1.9, z:0.9}, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 0.0, 0.0)), Vec3{x:0.0, y:0.0, z:0.0}))
+//         Box::new(Cube(Vec3{x:10.0, y:2.0, z:1.0}, surf_att)),
+//         Box::new(Move(Box::new(Cube(Vec3{x:4.0, y:1.9, z:0.9}, surf_att)), Vec3{x:0.0, y:0.0, z:0.0}))
 //     );
 
 //     let room_with_window = Cut(
 //         Box::new(room.clone()),
-//         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, Vec3{x:0.8, y:0.8, z:0.8}, 1.0, 1, 0.0, 0.0)), Vec3{x:2.0, y:-0.2, z:-0.9}))
+//         Box::new(Move(Box::new(Cube(Vec3{x:0.6, y:0.4, z:0.3}, surf_att)), Vec3{x:2.0, y:-0.2, z:-0.9}))
 //     );
 
-//     let mut sphere = Box::new(Sphere(Vec3{x:1.0, y:0.0, z:0.0}, 1.0, 1, 0.0, 0.5));
-//     sphere = Box::new(Scale(Box::new(*sphere), 0.2));
-//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.5, y:0.8, z:0.0}));
+//     let mut sphere = Box::new(Sphere(sphere_att));
+//     sphere = Box::new(Scale(Box::new(*sphere), 0.3));
+//     sphere = Box::new(Move(Box::new(*sphere), Vec3{x:2.0, y:0.7, z:0.0}));
 
 //     //Assemble
 //     let objects = Box::new(Union(
@@ -1284,22 +1304,41 @@ use crate::vec::Vec2;
 
 
 //Frac2 test
-pub fn scene() -> Box<Op> {
+// pub fn scene(frame: i32) -> Box<Op> {
 
-    let frac2_att = ObjectData{
-        color: Vec3{x:0.8, y:0.8, z:0.8},
+//     let frac2_att = ObjectData{
+//         color: Vec3{x:0.8, y:0.8, z:0.8},
+//         reflectance: 1.0,
+//         surface_model: 1,
+//         emission_rate: 50.0,
+//         refractive_index: 1.5,
+//     };
+
+//     let mut frac2 = Box::new(Frac2(frac2_att));
+//     frac2 = Box::new(RotateY(Box::new(*frac2), -frame as f32*PI/100.0));
+//     frac2 = Box::new(RotateX(Box::new(*frac2), frame as f32*PI/100.0));
+//     frac2 = Box::new(Move(Box::new(*frac2), Vec3 { x:2.0 - (frame as f32 / 100.0), y:0.0, z:0.0}));
+
+//     return Box::new(*frac2)
+// }
+
+
+//Frac3 test
+pub fn scene(frame: i32) -> Box<Op> {
+
+    let frac4_att = ObjectData{
+        color: Vec3{x:0.9, y:0.9, z:0.9},
         reflectance: 1.0,
         surface_model: 1,
-        emission_rate: 50.0,
+        emission_rate: 0.0,
         refractive_index: 1.5,
     };
 
-    let mut frac2 = Box::new(Frac2(frac2_att));
-    frac2 = Box::new(RotateY(Box::new(*frac2), -PI/4.0));
-    frac2 = Box::new(RotateX(Box::new(*frac2), PI/4.0));
-    frac2 = Box::new(Move(Box::new(*frac2), Vec3 { x:2.0, y:0.0, z:0.0}));
+    let mut frac4 = Box::new(Frac4(frac4_att));
+    frac4 = Box::new(Scale(Box::new(*frac4), 0.2));
+    frac4 = Box::new(Move(Box::new(*frac4), Vec3 {x:1.5, y:0.8, z:0.8-(0.008*frame as f32)}));
 
-    return Box::new(*frac2)
+    return Box::new(*frac4)
 }
 
 
