@@ -86,6 +86,15 @@ impl Vec4 {
     pub fn dot(&self, other: &Vec4) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z + self.q * other.q
     }
+
+    pub fn ones() -> Vec4 {
+        Vec4 {
+            x: 1.0f32,
+            y: 1.0f32,
+            z: 1.0f32,
+            q: 1.0f32,
+        }
+    }
 }
 
 impl Add for Vec4 {
@@ -109,6 +118,30 @@ impl Div<f32> for Vec4 {
             y: self.y / other,
             z: self.z / other,
             q: self.q / other,
+        }
+    }
+}
+
+impl Add<f32> for Vec4 {
+    type Output = Vec4;
+    fn add(self, other: f32) -> Vec4 {
+        Vec4 {
+            x: self.x + other,
+            y: self.y + other,
+            z: self.z + other,
+            q: self.q + other,
+        }
+    }
+}
+
+impl Mul<f32> for Vec4 {
+    type Output = Vec4;
+    fn mul(self, other: f32) -> Vec4 {
+        Vec4 {
+            x: self.x * other,
+            y: self.y * other,
+            z: self.z * other,
+            q: self.q * other,
         }
     }
 }
@@ -378,6 +411,8 @@ impl Vec3 {
 // }
 // //TODO may be removed
 // impl Eq for Vec3 {}
+
+
 
 impl Add for Vec3 {
     type Output = Vec3;

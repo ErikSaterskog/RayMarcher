@@ -6,6 +6,7 @@ use crate::Op::{Union, SmoothUnion, Cut, Intersection, Move, RotateX, RotateY, R
 
 use crate::lerp;
 use crate::vec::ObjectData;
+use crate::vec::RayData;
 use crate::vec::Vec2;
 use crate::vec::Vec3;
 use crate::vec::Vec4;
@@ -57,6 +58,8 @@ pub enum Op{
     Frac2(ObjectData),
     Frac3(ObjectData),
     Frac4(ObjectData),
+    Frac5(ObjectData),
+    Frac6(ObjectData),
 }
 
 impl Op { 
@@ -450,11 +453,11 @@ impl Op {
             // }
             Self::Frac4 (frac4_attributes) => {
 
-                let scale: f32 = 2.0;
+                let scale: f32 = 2.0;    //2.0
                 let max_iter = 30;
-                let fold_scale = 1.5;
+                //let fold_scale = 1.5;
                 //let bailout =  10.0;
-                let scale_sq = scale * scale;
+                //let scale_sq = scale * scale;
                 
                 let offset = ray_pos;
                 let mut z = ray_pos;
@@ -469,14 +472,52 @@ impl Op {
                 let r = Vec3::len(&z);
                 return Surfacepoint{dist: r/(dr.abs()), attributes: *frac4_attributes};
             }
+            Self::Frac5(frac5_attributes) => {
+
+                let d0=DE0(ray_pos, Vec3{x:0.0, y:0.0, z:0.0});   
+                let d2=DE2(ray_pos);
+
+                return Surfacepoint{dist: (d0).max(d2), attributes: *frac5_attributes};
+            }
+            Self::Frac6(frac6_attributes) => {
+                let ones = Vec3::ones();
+                let mut z = ray_pos;
+                let scale = 2.0;
+                let mut de = 1.0;
+                let m_r2 = 0.5;
+                let f_r2 = 1.0;
+                let mbf = 0.5;
+
+                for _ in 0..20 { 
+                    
+                    z = Vec3::abs(&(z + ones)) - Vec3::abs(&(z - ones)) - z;
+                    let r2 = z.dot(&z);
+                    
+                    if r2 < m_r2 {
+                        z = z * mbf;
+                        de = de * mbf;
+                    } else if r2 < f_r2 {
+                        let tglad_factor2 = f_r2 / r2;
+                        z = z * tglad_factor2;
+                        de = de * tglad_factor2;
+                    }
+                    z = z * scale + ray_pos;
+                    de = de * (scale).abs() + 1.;
+                }
+                //if fractal.mandelbox.mainRotationEnabled:
+                //    z = fractal.mandelbox.mainRot.rotate_vector(z)
+
+                
+                return Surfacepoint{dist: de, attributes: *frac6_attributes}
+            }
         }
     }
 }
 
 pub fn sphere_fold(mut z: Vec3, mut dz: f32)  -> (Vec3, f32) {
 	let r2 = Vec3::dot(&z,&z);
-    let m_r2 = 0.5;
-    let f_r2 = 1.0;
+    let m_r2 = 0.5;  //0.5
+    let f_r2 = 1.0; //1.0
 	if r2 < m_r2 { 
 		// linear inner scaling
 		let temp = f_r2/m_r2;
@@ -491,8 +532,102 @@ pub fn sphere_fold(mut z: Vec3, mut dz: f32)  -> (Vec3, f32) {
     return (z, dz)
 }
 
+pub fn sphere_fold_2(mut z: Vec4) -> Vec4 {
+    let r2 = Vec3::dot(&Vec3{x:z.x, y:z.y, z:z.z},&Vec3{x:z.x, y:z.y, z:z.z});
+    if r2 < 2.0 {
+        z = z * (1.0/r2);
+    } else {
+        z = z * 0.5;
+    }
+    return z
+}
+
+
 pub fn box_fold(mut z: Vec3, dz: f32) -> (Vec3, f32) {
-    let f_lim = 1.0;
+    let f_lim = 1.0;  //1.0
 	z = Vec3::clamp(z, -f_lim, f_lim) * 2.0 - z;
     return (z, dz)
 }
+
+pub fn box_fold_2(mut z: Vec3) -> Vec3 {
+    let f_lim = 1.0;  //1.0
+	z = Vec3::clamp(z, -f_lim, f_lim) * 2.0 - z;
+    return z
+}
+
+pub fn DE0(pos: Vec3, from: Vec3) -> f32 {
+    let z = pos - from;
+    let r = Vec3::dot(&z,&z)*Vec3::len(&z).powf(2.0);
+    return (1.0-smoothstep(0.0,0.01,r))*0.01
+}
+
+pub fn DE2(pos: Vec3) -> f32 {
+
+    let scale = -20.0*0.272321;
+    let mut p = Vec4{x: pos.x, y: pos.y, z: pos.z, q:1.0};
+    let p0 = p;  
+    let c = Vec4{x: 0.0, y: 0.0, z: 0.0, q: 0.0}; // params = -0.5..0.5
+
+    for _ in 0..10 { 
+        let temp = box_fold_2(Vec3{x:p.x, y:p.y, z:p.z});
+        p = Vec4{x:temp.x ,y:temp.y ,z:temp.z ,q:p.q};
+        p = sphere_fold_2(p);
+        p = p*scale+c;
+    }
+
+   return Vec3::len(&Vec3{x:p.x, y:p.y, z:p.z})/p.q;
+}
+
+pub fn smoothstep (edge0: f32, edge1: f32, mut x: f32) -> f32 {
+    // Scale, and clamp x to 0..1 range
+    x = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+    return x * x * (3.0 - 2.0 * x);
+ }
+
+// vec4 sphere(vec4 z)
+// {
+//    float r2 = dot(z.xyz,z.xyz);
+//    if(r2<2.0)
+//       z*=(1.0/r2);
+//    else   z*=0.5;
+
+//    return z;
+
+// }
+// vec3 box(vec3 z)
+// {
+//    return clamp(z, -1.0, 1.0) * 2.0 - z;
+// }
+
+// float DE0(vec3 pos)
+// {
+//    vec3 z=pos-from;
+//    float r=dot(pos-from,pos-from)*pow(length(z),2.0);
+//    return (1.0-smoothstep(0.0,0.01,r))*0.01;
+// }
+
+// float DE2(vec3 pos)
+// {
+
+//    vec4 scale = -20*0.272321;
+//      vec4 p = vec4(pos,1.0), p0 = p;  
+//    vec4 c=vec4(param[31].w,param[32].w,param[33].w,0.5)-0.5; // param = 0..1
+
+//      for (float i=0;i<10; i++)
+//    {
+//       p.xyz=box(p.xyz);
+//       p=sphere(p);
+//       p=p*scale+c;
+//      }
+
+//    return length(p.xyz)/p.w;
+// }
+
+// float DE(vec3 pos)
+// {
+
+//    float d0=DE0(pos);   
+//    float d2=DE2(pos);
+
+//    return max(d0,d2);
+// }

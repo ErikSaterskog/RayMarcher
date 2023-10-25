@@ -1,4 +1,11 @@
 
+
+use crate::camera::evaluate_cubic_bezier;
+use crate::camera::look_at_point;
+use crate::camera::BezierPath;
+
+
+use crate::lerp;
 use crate::operations::Op;
 use crate::Op::Move;
 use crate::Op::Scale;
@@ -28,13 +35,18 @@ use crate::Op::Frac;
 use crate::Op::Frac2;
 use crate::Op::Frac3;
 use crate::Op::Frac4;
+use crate::Op::Frac5;
+use crate::Op::Frac6;
 
 
 use core::f32::consts::PI;
+use std::f32::consts::E;
 
 use crate::vec::ObjectData;
 use crate::vec::Vec3;
 use crate::vec::Vec2;
+
+use crate::camera::Camera;
 
 
 //Surface models:
@@ -1238,7 +1250,7 @@ use crate::vec::Vec2;
 
 
 // // //Depth of field test
-// pub fn scene() -> Box<Op> {
+// pub fn scene(frame: i32) -> Box<Op> {
 
 //     let sphere_att = ObjectData{
 //         color: Vec3{x:1.0, y:0.1, z:0.1},
@@ -1324,21 +1336,28 @@ use crate::vec::Vec2;
 
 
 //Frac3 test
-pub fn scene(frame: i32) -> Box<Op> {
+pub fn scene(t: f32) -> Box<Op> {
 
-    let frac4_att = ObjectData{
-        color: Vec3{x:0.9, y:0.9, z:0.9},
+    let att = ObjectData{
+        color: Vec3{x:0.7, y:0.7, z:0.0},
         reflectance: 1.0,
         surface_model: 1,
         emission_rate: 0.0,
         refractive_index: 1.5,
     };
+    
+    // let sphere_att = ObjectData{
+    //     color: Vec3{x:0.9, y:0.9, z:0.9},
+    //     reflectance: 1.0,
+    //     surface_model: 1,
+    //     emission_rate: 0.0,
+    //     refractive_index: 1.5,
+    // };
 
-    let mut frac4 = Box::new(Frac4(frac4_att));
-    frac4 = Box::new(Scale(Box::new(*frac4), 0.2));
-    frac4 = Box::new(Move(Box::new(*frac4), Vec3 {x:1.5, y:0.8, z:0.8-(0.008*frame as f32)}));
+    let mut frac = Box::new(Frac4(att));   //Side is 12
+    frac = Box::new(Scale(Box::new(*frac), 1.0/6.0));
 
-    return Box::new(*frac4)
+    return Box::new(*frac)
 }
 
 

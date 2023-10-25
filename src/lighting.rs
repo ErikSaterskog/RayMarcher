@@ -1,9 +1,9 @@
 use crate::ATMOSPHERE_HEIGHT;
 use crate::DENSITY_FALLOFF;
-use crate::EYE_POS;
-use crate::RGB_RAYS;
+
 use crate::SCATTER_COEFF;
-use crate::SUN_POSITION;
+use crate::Settings;
+//use crate::SUN_POSITION;
 use crate::vec::RayData;
 use crate::vec::Vec3;
 use crate::Op;
@@ -11,8 +11,7 @@ use crate::ray;
 use core::f32::consts::PI;
 use std::f32::consts::E;
 use std::ops::Add;
-use crate::EPSILON3;
-use crate::SUN_COLOR;
+
 
 
 pub fn get_indirect_lighting(
@@ -22,6 +21,7 @@ pub fn get_indirect_lighting(
     reflectance: f32,
     surface_model: i8,
     new_refractive_index: f32,
+    settings: Settings,
 ) -> Vec3 {
 
     //mixed diffuse and mirror
@@ -54,14 +54,16 @@ pub fn get_indirect_lighting(
         //     println!("normal: {:?}",normal);
         // }
 
-        ray_data.ray_pos = ray_data.ray_pos + normal*EPSILON3*10.;
+        ray_data.ray_pos = ray_data.ray_pos + normal*settings.eps3*10.;
+        ray_data.origin = ray_data.ray_pos;
         ray_data.u_vec = Vec3::normalize(&u_vector_rot);
         ray_data.fog_collision_check = true;
         ray_data.initial = false;
 
-        (indirect_incoming,_) = ray(
+        (indirect_incoming,_,_) = ray(
             &objects,
             ray_data,
+            settings,
         ); 
         //indirect_incoming = indirect_incoming.vec_mult(&ray_data.color);
     }
@@ -73,14 +75,16 @@ pub fn get_indirect_lighting(
         brdf = reflectance;
         cos_theta =  1.0;
 
-        ray_data.ray_pos = ray_data.ray_pos + normal*EPSILON3*10.;
+        ray_data.ray_pos = ray_data.ray_pos + normal*settings.eps3*10.;
+        ray_data.origin = ray_data.ray_pos;
         ray_data.u_vec = Vec3::normalize(&u_vector_rot);
         ray_data.fog_collision_check = true;
         ray_data.initial = true;
         
-        (indirect_incoming,_) = ray(
+        (indirect_incoming,_,_) = ray(
             &objects,
             ray_data,
+            settings,
         ); 
     }
 
@@ -107,26 +111,29 @@ pub fn get_indirect_lighting(
         if sin_theta2 > 1.0 || rand::random::<f32>() < r {// || (rand::random::<f32>() < (1.0 - normal_dot_u) && ray_data.refractive_index < new_refractive_index) {
             //Total reflection
             u_vector_rot = -Vec3::rot_vector180(&normal, &ray_data.u_vec);
-            ray_data.ray_pos = ray_data.ray_pos + normal*EPSILON3*10.;
+            ray_data.ray_pos = ray_data.ray_pos + normal*settings.eps3*10.;
         } else {
             let theta2 = sin_theta2.asin();
             let tangent = Vec3::normalize(&Vec3::cross(&normal, &ray_data.u_vec));
             u_vector_rot = -Vec3::rot_vector(&tangent, &normal, -theta2);
             ray_data.refractive_index = new_refractive_index;
-            ray_data.ray_pos = ray_data.ray_pos - normal*EPSILON3*10.;
+            ray_data.ray_pos = ray_data.ray_pos - normal*settings.eps3*10.;
         }
         p = 1.0;
         brdf = reflectance;
         cos_theta =  1.0;
 
         //ray_data.ray_pos = ray_data.ray_pos - normal*EPSILON3*10.;
+        
+        ray_data.origin = ray_data.ray_pos;
         ray_data.u_vec = u_vector_rot;
         ray_data.fog_collision_check = true;
         ray_data.initial = false;
         
-        (indirect_incoming,_) = ray(
+        (indirect_incoming,_,_) = ray(
             &objects,
             ray_data,
+            settings,
         ); 
     }
 
@@ -140,13 +147,15 @@ pub fn get_indirect_lighting(
         //cos_theta = u_vector_rot.dot(&normal);
 
         //ray_data.ray_pos = ray_data.ray_pos;
+        ray_data.origin = ray_data.ray_pos;
         ray_data.u_vec = Vec3::normalize(&u_vector_rot);
         ray_data.fog_collision_check = true;
         ray_data.initial = false;
         
-        (indirect_incoming,_) = ray(
+        (indirect_incoming,_,_) = ray(
             &objects,
             ray_data,
+            settings,
         ); 
     }
 
@@ -160,30 +169,31 @@ fn get_shadow(
     start_pos: Vec3,
     light_u_vec: Vec3,
     objects: &Op,
+    settings: Settings,
 ) -> f32 {
 
     let mut ray_data = RayData::basic();
     ray_data.ray_pos = start_pos;
+    ray_data.origin = ray_data.ray_pos;
     ray_data.u_vec = light_u_vec;
     ray_data.bounce_depth = 100u8;
     ray_data.fog_collision_check = false;
     ray_data.initial = false;
-    let mut light_ray_hit = false;
-    (_, light_ray_hit) = ray(
+    let (_, _, distance) = ray(
         &objects,
         ray_data,
+        settings,
     ); 
 
-    if light_ray_hit {   //TODO can göras bättre......
+    if distance < Vec3::len(&(ray_data.origin - settings.sun_position)) {
         return 0.0f32
     } else {
         return 1.0f32
     }
 }
 
-fn get_sun_point() -> Vec3 {
-    let sun_radius = 3.0;
-    return SUN_POSITION + Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*sun_radius-Vec3{x:1.0, y:1.0, z:1.0}*sun_radius/2.0;
+fn get_sun_point(settings: Settings) -> Vec3 {
+    return settings.sun_position + Vec3{x:rand::random::<f32>(), y:rand::random::<f32>(), z:rand::random::<f32>()}*settings.sun_radius-Vec3{x:1.0, y:1.0, z:1.0}*settings.sun_radius/2.0;
 }
 
 pub fn get_direct_lighting(
@@ -192,31 +202,36 @@ pub fn get_direct_lighting(
     objects: &Op,
     normal: Vec3,
     fog: bool,
+    settings: Settings,
 ) -> Vec3 {
 
     if fog {
-        let sun_pos = get_sun_point();
+        let sun_pos = get_sun_point(settings);
         let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
-        let shadow = get_shadow(start_pos, light_u_vec, objects);
-        let direct_color = SUN_COLOR * shadow;        
+        let shadow = get_shadow(start_pos, light_u_vec, objects, settings);
+        let direct_color = settings.sun_color * shadow;        
         return direct_color
     } else {
-        let sun_pos = get_sun_point();
+        let sun_pos = get_sun_point(settings);
         let light_u_vec = Vec3::normalize(&(sun_pos - start_pos));
         let normal_dot_light = (0.0f32).max(light_u_vec.dot(&normal));
-        let shadow = get_shadow(start_pos+normal*EPSILON3*10., light_u_vec, objects);
-        let direct_color = SUN_COLOR * normal_dot_light * shadow;
+        let shadow = get_shadow(start_pos+normal*settings.eps3*10., light_u_vec, objects, settings);
+        let direct_color = settings.sun_color * normal_dot_light * shadow;
         return direct_color
     }
 }
 
-pub fn get_rayleigh_color(start_pos: Vec3, end_pos: Vec3) -> Vec3 {
+pub fn get_rayleigh_color(
+    start_pos: Vec3,
+    end_pos: Vec3,
+    sun_position: Vec3
+    ) -> Vec3 {
     let ray_length = Vec3::len(&(start_pos-end_pos));
     let ray_dir = Vec3::normalize(&(end_pos - start_pos));
 
     let num_scattering_points = 100;
     let step_length = ray_length / (num_scattering_points - 1) as f32;
-    let mut sun_scatter_direction = Vec3::normalize(&(SUN_POSITION - start_pos));
+    let mut sun_scatter_direction = Vec3::normalize(&(sun_position - start_pos));
     let mut scatter_point = start_pos;
     let mut density = 0.0;
     let mut transmittance = Vec3::zeros();
@@ -228,8 +243,8 @@ pub fn get_rayleigh_color(start_pos: Vec3, end_pos: Vec3) -> Vec3 {
     for i in 0..num_scattering_points {
         
         density = atm_density_at_point(scatter_point);
-        sun_scatter_direction = Vec3::normalize(&(SUN_POSITION - scatter_point));
-        sun_ray_length = Vec3::len(&(SUN_POSITION-scatter_point));
+        sun_scatter_direction = Vec3::normalize(&(sun_position - scatter_point));
+        sun_ray_length = Vec3::len(&(sun_position-scatter_point));
 
         sun_ray_optical_depth = optical_depth(start_pos, sun_scatter_direction, sun_ray_length);
         view_ray_optical_depth = optical_depth(start_pos, ray_dir, step_length * i as f32);
