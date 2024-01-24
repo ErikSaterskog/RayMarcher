@@ -386,82 +386,82 @@ use crate::camera::Camera;
 // }
 
 //spheres on plane
-// pub fn scene() -> Box<Op> {
+pub fn scene(t: f32) -> Box<Op> {
 
-//     let plane_att = ObjectData { 
-//         color: Vec3 { x: 0.9, y: 0.9, z: 0.9 },
-//         reflectance: 1.0,
-//         surface_model: 1,
-//         emission_rate: 10.0,
-//         refractive_index: 0.0 
-//     };
+    let plane_att = ObjectData { 
+        color: Vec3 { x: 0.8, y: 0.8, z: 0.8 },
+        reflectance: 1.0,
+        surface_model: 1,
+        emission_rate: 10.0,
+        refractive_index: 0.0 
+    };
 
-//     let cube_att = ObjectData { 
-//         color: Vec3 { x: 0.9, y: 0.9, z: 0.9 },
-//         reflectance: 1.0,
-//         surface_model: 3,
-//         emission_rate: 0.0,
-//         refractive_index: 1.5
-//     };
+    let cube_att = ObjectData { 
+        color: Vec3 { x: 0.9, y: 0.9, z: 0.9 },
+        reflectance: 1.0,
+        surface_model: 3,
+        emission_rate: 0.0,
+        refractive_index: 1.5
+    };
 
-//     let sphere2_att = ObjectData { 
-//         color: Vec3 { x: 0.9, y: 0.1, z: 0.1 },
-//         reflectance: 1.0,
-//         surface_model: 1,
-//         emission_rate: 0.0,
-//         refractive_index: 1.5 
-//     };
+    let sphere2_att = ObjectData { 
+        color: Vec3 { x: 0.9, y: 0.1, z: 0.1 },
+        reflectance: 1.0,
+        surface_model: 1,
+        emission_rate: 0.0,
+        refractive_index: 1.5 
+    };
 
-//     let sphere3_att = ObjectData { 
-//         color: Vec3 { x: 0.1, y: 0.9, z: 0.1 },
-//         reflectance: 1.0,
-//         surface_model: 1,
-//         emission_rate: 0.0,
-//         refractive_index: 1.5 
-//     };
+    let sphere3_att = ObjectData { 
+        color: Vec3 { x: 0.1, y: 0.9, z: 0.1 },
+        reflectance: 1.0,
+        surface_model: 1,
+        emission_rate: 0.0,
+        refractive_index: 1.5 
+    };
 
-//     //Plane
-//     let mut plane = Box::new(Plane(-1.0, plane_att));
-//     //let mut plane = Box::new(Cube(Vec3{x:100.0, y:1.0, z:100.0}, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
+    //Plane
+    let mut plane = Box::new(Plane(-1.0, plane_att));
+    //let mut plane = Box::new(Cube(Vec3{x:100.0, y:1.0, z:100.0}, Vec3{x:210.0, y:210.0, z:210.0}, 1.0, 1, 0.0, 0.0));
     
-//     //Glass cube
-//     let mut cube = Box::new(Cube(Vec3{x:1.0, y:1.0, z:1.0}, cube_att));
-//     cube = Box::new(Scale(Box::new(*cube),0.35));
-//     cube = Box::new(Move(Box::new(*cube),Vec3{x:-1.0, y:-1.35, z:1.0}));
+    //Glass cube
+    let mut cube = Box::new(Cube(Vec3{x:1.0, y:1.0, z:1.0}, cube_att));
+    cube = Box::new(Scale(Box::new(*cube),0.35));
+    cube = Box::new(Move(Box::new(*cube),Vec3{x:-1.0, y:-1.35, z:1.0}));
 
-//     //Torus
-//     // let mut torus = Box::new(Torus(Vec2{x:1.0, y:0.5},Vec3{x:0.0, y:220.0, z:0.0}, 1.0, 2, 0.0, 1.5));
-//     // torus = Box::new(Scale(Box::new(*torus),0.5));
-//     // torus = Box::new(Move(Box::new(*torus),Vec3{x:-2.0, y:1.0, z:0.0}));
-//     // torus = Box::new(RotateZ(Box::new(*torus), PI/1.5));
+    //Torus
+    // let mut torus = Box::new(Torus(Vec2{x:1.0, y:0.5},Vec3{x:0.0, y:220.0, z:0.0}, 1.0, 2, 0.0, 1.5));
+    // torus = Box::new(Scale(Box::new(*torus),0.5));
+    // torus = Box::new(Move(Box::new(*torus),Vec3{x:-2.0, y:1.0, z:0.0}));
+    // torus = Box::new(RotateZ(Box::new(*torus), PI/1.5));
 
-//     //light green Large sphere
-//     let mut sphere2 = Box::new(Sphere(sphere2_att));
-//     sphere2 = Box::new(Scale(Box::new(*sphere2),1.5));
-//     sphere2 = Box::new(Move(Box::new(*sphere2),Vec3{x:1.0, y:-2.5, z:-1.0}));
+    //light green Large sphere
+    let mut sphere2 = Box::new(Sphere(sphere2_att));
+    sphere2 = Box::new(Scale(Box::new(*sphere2),1.5));
+    sphere2 = Box::new(Move(Box::new(*sphere2),Vec3{x:1.0, y:-2.5, z:-1.0}));
 
-//     //Red small sphere
-//     let mut sphere3 = Box::new(Sphere(sphere3_att));
-//     sphere3 = Box::new(Scale(Box::new(*sphere3),1.0));
-//     sphere3 = Box::new(Move(Box::new(*sphere3),Vec3{x:1.0, y:-2.0, z:2.0}));
+    //Red small sphere
+    let mut sphere3 = Box::new(Sphere(sphere3_att));
+    sphere3 = Box::new(Scale(Box::new(*sphere3),1.0));
+    sphere3 = Box::new(Move(Box::new(*sphere3),Vec3{x:1.0, y:-2.0, z:2.0}));
 
-//     let mut objects = Union(
-//         Box::new(*plane.clone()),
-//         Box::new(Union(
-//             Box::new(*sphere2.clone()),
-//             Box::new(Union(
-//                 cube,
-//                 sphere3
-//                 ))
-//           //      Box::new(*sphere2.clone()),
-//           //      Box::new(Union(
-//           //          Box::new(*sphere3.clone()),
-//           //          Box::new(*cube.clone()),
-//         )));//)))));
+    let mut objects = Union(
+        Box::new(*plane.clone()),
+        Box::new(Union(
+            Box::new(*sphere2.clone()),
+            Box::new(Union(
+                cube,
+                sphere3
+                ))
+          //      Box::new(*sphere2.clone()),
+          //      Box::new(Union(
+          //          Box::new(*sphere3.clone()),
+          //          Box::new(*cube.clone()),
+        )));//)))));
 
-//     objects = *Box::new(Move(Box::new(objects.clone()), Vec3{x:4.0, y:2.0, z:0.0}));
-//     return Box::new(objects)
-// }
+    objects = *Box::new(Move(Box::new(objects.clone()), Vec3{x:4.0, y:2.0, z:0.0}));
+    return Box::new(objects)
+}
 
 
 
@@ -1081,7 +1081,7 @@ use crate::camera::Camera;
 
 
 // // //Cornell box
-// pub fn scene() -> Box<Op> {
+// pub fn scene(t: f32) -> Box<Op> {
 
 
 //     let sphere_att = ObjectData{
@@ -1336,29 +1336,32 @@ use crate::camera::Camera;
 
 
 //Frac3 test
-pub fn scene(t: f32) -> Box<Op> {
+// pub fn scene(t: f32) -> Box<Op> {
 
-    let att = ObjectData{
-        color: Vec3{x:0.7, y:0.7, z:0.0},
-        reflectance: 1.0,
-        surface_model: 1,
-        emission_rate: 0.0,
-        refractive_index: 1.5,
-    };
+//     let att = ObjectData{
+//         color: Vec3{x:0.7, y:0.7, z:0.0},
+//         reflectance: 1.0,
+//         surface_model: 1,
+//         emission_rate: 0.0,
+//         refractive_index: 1.5,
+//     };
     
-    // let sphere_att = ObjectData{
-    //     color: Vec3{x:0.9, y:0.9, z:0.9},
-    //     reflectance: 1.0,
-    //     surface_model: 1,
-    //     emission_rate: 0.0,
-    //     refractive_index: 1.5,
-    // };
+//     // let sphere_att = ObjectData{
+//     //     color: Vec3{x:0.9, y:0.9, z:0.9},
+//     //     reflectance: 1.0,
+//     //     surface_model: 1,
+//     //     emission_rate: 0.0,
+//     //     refractive_index: 1.5,
+//     // };
 
-    let mut frac = Box::new(Frac4(att));   //Side is 12
-    frac = Box::new(Scale(Box::new(*frac), 1.0/6.0));
+//     let scale = 2.0 - t*0.6;
 
-    return Box::new(*frac)
-}
+//     let mut frac = Box::new(Frac4(att, scale));   //Side is 12 for scale=2.0
+//     //frac = Box::new(Scale(Box::new(*frac), 1.0/6.0));
+//     frac = Box::new(Scale(Box::new(*frac), 1.0/(2.0*(scale+1.0)/(scale-1.0))));
+
+//     return Box::new(*frac)
+// }
 
 
 

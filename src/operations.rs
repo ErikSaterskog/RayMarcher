@@ -57,7 +57,7 @@ pub enum Op{
     Frac(ObjectData),
     Frac2(ObjectData),
     Frac3(ObjectData),
-    Frac4(ObjectData),
+    Frac4(ObjectData, f32),
     Frac5(ObjectData),
     Frac6(ObjectData),
 }
@@ -451,10 +451,10 @@ impl Op {
             //     let distance = 0.0;
             //     return Surfacepoint{dist: distance, attributes: *frac4_attributes};
             // }
-            Self::Frac4 (frac4_attributes) => {
+            Self::Frac4 (frac4_attributes, scale) => {
 
-                let scale: f32 = 2.0;    //2.0
-                let max_iter = 30;
+                //let scale: f32 = 2.0;    //2.0
+                let max_iter = 30;    //todo, change number of iterations needed
                 //let fold_scale = 1.5;
                 //let bailout =  10.0;
                 //let scale_sq = scale * scale;
@@ -466,7 +466,7 @@ impl Op {
                     (z,dr) = box_fold(z,dr);       // Reflect
                     (z,dr) = sphere_fold(z,dr);    // Sphere Inversion
                      
-                    z = z*scale + offset;  // Scale & Translate
+                    z = z**scale + offset;  // Scale & Translate
                     dr = dr*(scale.abs())+1.0;
                 }
                 let r = Vec3::len(&z);

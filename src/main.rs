@@ -84,16 +84,17 @@ pub struct Settings {
     pub fog_color: Vec3,
     pub background_color_1: Vec3,
     pub background_color_2: Vec3,
+    pub frame_start: i32,
 }
 
 impl Settings {
     pub fn basic() -> Settings {
         Settings {
-            num_of_samples: 20,
+            num_of_samples: 50,
             eps1: 0.00001, //hit
             eps2: 0.00001, //normal
             eps3: 0.00001, //lightning
-            max_bounce_depth: 8,
+            max_bounce_depth: 10,
             max_bounce_color: Vec3::zeros(),
             nan_color: Vec3::zeros(),
             max_distance: 200.0,
@@ -103,12 +104,12 @@ impl Settings {
             depth_of_field_const: 0.2,
             focal_depth_distance: 2.0,
             square_dof: false,
-            rgb_rays: false,
+            rgb_rays: false,  //TODO wavelength ist
             fog: false,
             fog_lambda: 1.0/15.0,
-            num_bin_height: 720,
+            num_bin_height: 1080,
             canvas_height: 2.0*1.125,
-            num_bin_width: 1280, 
+            num_bin_width: 1920, 
             canvas_width:  2.0*2.0,
             step_length_multiplier: 1.0,
             sun_light_method: 1,
@@ -125,15 +126,24 @@ impl Settings {
             fog_color: Vec3::ones(),
             background_color_1: Vec3{x: 0.05, y: 0.05, z: 0.6},
             background_color_2: Vec3{x: 0.53, y: 0.81, z: 0.92},
+            //background_color_1: Vec3{x: 0.0, y: 0.0, z: 0.0},
+            //background_color_2: Vec3{x: 0.0, y: 0.0, z: 0.0},
+            frame_start: 0,
         }
     }
 }
 
 
 
-fn lerp(a: f32, b: f32, h: f32) -> f32 {
-    return a*h+b*(1.0f32-h)
-} 
+// fn lerp(a: f32, b: f32, h: f32) -> f32 {
+//     let h = h.max(0.0).min(1.0);
+//     return a*h+b*(1.0f32-h)
+// } 
+
+fn lerp(start: f32, end: f32, t: f32) -> f32 {
+    let t = t.max(0.0).min(1.0); // Ensure t is between 0.0 and 1.0
+    start + (end - start) * t
+}
 
 fn vec_to_image(img: Vec<Vec<Vec3>>, filename: &String) -> () {
     let sizey = img.len() as u32;
@@ -209,9 +219,9 @@ fn ray(
 
             let h = (0.0f32).max(ray_data.u_vec.dot(&Vec3{x:0.0, y:1.0, z:0.0}));
 
-            let r = lerp(settings.background_color_1.x, settings.background_color_2.x, h);
-            let g = lerp(settings.background_color_1.y, settings.background_color_2.y, h);
-            let b = lerp(settings.background_color_1.z, settings.background_color_2.z, h);
+            let r = lerp(settings.background_color_2.x, settings.background_color_1.x, h);
+            let g = lerp(settings.background_color_2.y, settings.background_color_1.y, h);
+            let b = lerp(settings.background_color_2.z, settings.background_color_1.z, h);
             
             return (Vec3{x:r, y:g, z:b}, false, Vec3::len(&(ray_data.ray_pos - ray_data.origin)));
         }
@@ -424,9 +434,32 @@ const SCATTER_COEFF: Vec3 = Vec3{
 
 fn main() {
     let mut settings = Settings::basic();
-    settings.frames = 100;
+    settings.frames = 1;
 
     for frame in 0..settings.frames {
+
+        println!("Current frame: {:?}", frame);
+        let t = frame as f32 / settings.frames as f32;
+        let objects = scene(t);
+        let camera = get_camera(t);
+        //settings.sun_position = camera.position;
+        //settings.sun_position = Vec3{x:lerp(camera.position.x, -10.0, t), y:lerp(camera.position.y, -10.0, t),z:lerp(camera.position.z, -10.0, t)};// + up_dir*0.05;
+        // settings.sun_position = Vec3 {x:-10.0, y:-10.0, z:-10.0};
+        // settings.eps1 = 0.0001;
+        // settings.eps2 = 0.0001;
+        // settings.eps3 = 0.0001;
+        // settings.num_bin_height = 720;
+        // settings.num_bin_width = 1280;
+        // settings.num_of_samples = 20;
+        // settings.depth_of_field = true;
+        // settings.focal_depth_distance = 3.2;
+        // settings.depth_of_field_const = 0.05;
+        // settings.canvas_width = settings.focal_depth_distance * 2.0;
+        // settings.canvas_height = settings.focal_depth_distance * 1.125;
+        // //settings.frame_start = 0;
+        // settings.frame_start = 0;
+        // //settings.sun_radius = 
+
         let progress = Arc::new(Mutex::new(0.0));
         let now = Instant::now();
 
@@ -435,24 +468,8 @@ fn main() {
 
         let mut bin_pos_array: Array3<f32> = Array3::zeros((settings.num_bin_width, settings.num_bin_height, 3)); //x,y,z
         
-        println!("Current frame: {:?}", frame);
-        let t = frame as f32 / settings.frames as f32;
-        let objects = scene(t);
-        let camera = get_camera(t);
-
         let right_dir = Vec3::normalize(&Vec3::cross(&camera.direction, &Vec3{x:0.0, y:-1.0, z:0.0}));
         let up_dir = Vec3::normalize(&Vec3::cross(&right_dir, &camera.direction));
-
-        settings.sun_position = camera.position;// + up_dir*0.05;
-        //let sun_position = Vec3 {x:-100.0, y:-100.0, z:-100.0};
-        settings.eps1 = 0.000001;
-        settings.eps2 = 0.000001;
-        settings.eps3 = 0.000001;
-        settings.num_bin_height = 720/2;
-        settings.num_bin_width = 1280/2;
-        settings.num_of_samples = 2;
-        //settings.sun_radius = 
-
 
 
         for ((i, j, c), v) in bin_pos_array.indexed_iter_mut() {
@@ -538,7 +555,7 @@ fn main() {
 
         //loop to shoot rays parallell
         let image_array: Vec<Vec<Vec3>> = (0..settings.num_bin_width).into_par_iter().map(|i| {
-            let row: Vec<Vec3> = (0..settings.num_bin_height).into_par_iter().map(|j| {
+            let row: Vec<Vec3> = (0..settings.num_bin_height).into_iter().map(|j| {
 
                 let x = bin_pos_array[[i, j, 0]];
                 let y = bin_pos_array[[i, j, 1]];
@@ -632,7 +649,7 @@ fn main() {
         // sink.sleep_until_end();
 
         
-        let sn1 = frame.to_string();
+        let sn1 = (frame+settings.frame_start).to_string();
         let sn2 = ".png";
         let sn3 = format!("{}{}", sn1, sn2);
         vec_to_image(image_array, &sn3);

@@ -45,55 +45,103 @@ pub fn get_camera(t: f32) -> Camera {
     //     end_point: Vec3 {x:-1.5, y:-4.15, z:7.0},
     // };
 
-    let bezier_path1 = BezierPath {
-        start_point: Vec3 {x:-14.0, y:0.0, z:0.0},
-        control_point1: Vec3 {x:-8.0, y:-3.88, z:-3.858},
-        control_point2: Vec3 {x:-7.5, y:-3.88, z:-3.858},
-        end_point: Vec3 {x:-7.0, y:-3.88, z:-3.858},
-    };
+    // let bezier_path1 = BezierPath {
+    //     start_point: Vec3 {x:-14.0, y:0.0, z:0.0},
+    //     control_point1: Vec3 {x:-8.0, y:-3.88, z:-3.858},
+    //     control_point2: Vec3 {x:-7.5, y:-3.88, z:-3.858},
+    //     end_point: Vec3 {x:-7.0, y:-3.88, z:-3.858},
+    // };
 
-    let bezier_path2 = BezierPath {
-        start_point: Vec3 {x:-7.0, y:-3.88, z:-3.858},
-        control_point1: Vec3 {x:-6.0, y:-3.88, z:-3.858},
-        control_point2: Vec3 {x:-5.81, y:-3.88, z:-3.858},
-        end_point: Vec3 {x:-5.62, y:-3.88, z:-3.858},
-    };
+    // let bezier_path2 = BezierPath {
+    //     start_point: Vec3 {x:-7.0, y:-3.88, z:-3.858},
+    //     control_point1: Vec3 {x:-6.0, y:-3.88, z:-3.858},
+    //     control_point2: Vec3 {x:-5.81, y:-3.88, z:-3.858},
+    //     end_point: Vec3 {x:-5.62, y:-3.88, z:-3.858},
+    // };
 
-    let bezier_path3 = BezierPath {
-        start_point: Vec3 {x:-71.0, y:-51.0, z:51.0},
-        control_point1: Vec3 {x:-71.0, y:-51.0, z:51.0}/1.3,
-        control_point2: Vec3 {x:-71.0, y:-51.0, z:51.0}/1.3,
-        end_point: Vec3 {x:-71.0, y:-51.0, z:51.0}/1.3,
-    };
+    // let bezier_path3 = BezierPath {
+    //     start_point: Vec3 {x:-71.0, y:-51.0, z:51.0},
+    //     control_point1: Vec3 {x:-71.0, y:-51.0, z:51.0}/1.3,
+    //     control_point2: Vec3 {x:-71.0, y:-51.0, z:51.0}/1.3,
+    //     end_point: Vec3 {x:-71.0, y:-51.0, z:51.0}/1.3,
+    // };
 
-    let bezier_path4 = BezierPath {  //Frac4, scale 2
-        start_point: Vec3 {x:-4.0, y:-0.0, z:0.0},
-        control_point1: Vec3 {x:-2.0, y:-0.65, z:0.65},
-        control_point2: Vec3 {x:-1.0, y:-0.55, z:0.595},
-        end_point: Vec3 {x:-0.9, y:-0.55, z:0.595},
-    };
+    // let bezier_path4 = BezierPath {  //Frac4, scale 2
+    //     start_point: Vec3 {x:-4.0, y:-0.0, z:0.0},
+    //     control_point1: Vec3 {x:-2.0, y:-0.65, z:0.65},
+    //     control_point2: Vec3 {x:-1.0, y:-0.55, z:0.595},
+    //     end_point: Vec3 {x:-0.9, y:-0.55, z:0.595},
+    // };
 
-    let bezier_path5 = BezierPath {  //Frac4, scale 2
-        start_point: Vec3 {x:-0.9, y:-0.55, z:0.595},
-        control_point1: Vec3 {x:-0.89, y:-0.55, z:0.595},
-        control_point2: Vec3 {x:-0.88, y:-0.55, z:0.595},
-        end_point: Vec3 {x:-0.87, y:-0.55, z:0.595},
-    };
+    // let bezier_path5 = BezierPath {  //Frac4, scale 2
+    //     start_point: Vec3 {x:-0.9, y:-0.55, z:0.595},
+    //     control_point1: Vec3 {x:-0.89, y:-0.55, z:0.595},
+    //     control_point2: Vec3 {x:-0.88, y:-0.55, z:0.595},
+    //     end_point: Vec3 {x:-0.87, y:-0.55, z:0.595},
+    // };
 
-    let bezier_path6 = BezierPath {  //Frac4, scale 2
-        start_point: Vec3 {x:-0.87, y:-0.55, z:0.595},
-        control_point1: Vec3 {x:-0.86, y:-0.55, z:0.595},
-        control_point2: Vec3 {x:-0.85, y:-0.55, z:0.595},
-        end_point: Vec3 {x:-0.84, y:-0.55, z:0.595},
-    };
+    // let bezier_path6 = BezierPath {  //Frac4, scale 2
+    //     start_point: Vec3 {x:-0.87, y:-0.55, z:0.595},
+    //     control_point1: Vec3 {x:-0.866, y:-0.55, z:0.595},
+    //     control_point2: Vec3 {x:-0.863, y:-0.55, z:0.595},
+    //     end_point: Vec3 {x:-0.86, y:-0.55, z:0.595},
+    // };
 
-    let bezier_path7 = BezierPath {  //point light
-        start_point: Vec3 {x:-0.85, y:-0.55, z:0.595},
-        control_point1: Vec3 {x:-0.84, y:-0.55, z:0.595},
-        control_point2: Vec3 {x:-0.83, y:-0.55, z:0.56},
-        end_point: Vec3 {x:-0.82, y:-0.55, z:0.54},
-    };
+    // let bezier_path7 = BezierPath {  //path
+    //     start_point: Vec3 {x:-0.86, y:-0.55, z:0.595},
+    //     control_point1: Vec3 {x:-0.8566, y:-0.55, z:0.595},
+    //     control_point2: Vec3 {x:-0.8533, y:-0.55, z:0.595},
+    //     end_point: Vec3 {x:-0.85, y:-0.65, z:0.595},
+    // };
 
+    // let bezier_path_point = BezierPath {  //point
+    //     start_point: Vec3 {x:-0.8, y:-0.55, z:0.595},
+    //     control_point1: Vec3 {x:-0.75, y:-0.55, z:0.595},
+    //     control_point2: Vec3 {x:-0.75, y:-0.6, z:0.6},
+    //     end_point: Vec3 {x:-0.75, y:-1.0, z:0.65},
+    // };
+
+        // let bezier_path7 = BezierPath {  //path
+    //     start_point: Vec3 {x:-0.86, y:-0.55, z:0.595},
+    //     control_point1: Vec3 {x:-0.8566, y:-0.55, z:0.595},
+    //     control_point2: Vec3 {x:-0.8533, y:-0.55, z:0.595},
+    //     end_point: Vec3 {x:-0.85, y:-0.65, z:0.595},
+    // };
+
+    // let bezier_path_point = BezierPath {  //point
+    //     start_point: Vec3 {x:-0.8, y:-0.55, z:0.595},
+    //     control_point1: Vec3 {x:-0.75, y:-0.55, z:0.595},
+    //     control_point2: Vec3 {x:-0.75, y:-0.6, z:0.6},
+    //     end_point: Vec3 {x:-0.75, y:-1.0, z:0.65},
+    // };
+
+    // let bezier_path7 = BezierPath {  //path
+    //     start_point: Vec3 {x:-0.85, y:-0.65, z:0.595},
+    //     control_point1: Vec3 {x:-0.85, y:-0.8, z:0.595},
+    //     control_point2: Vec3 {x:-0.85, y:-1.2, z:0.595},
+    //     end_point: Vec3 {x:-0.85, y:-1.5, z:0.595},
+    // };
+
+    // let bezier_path_point = BezierPath {  //point
+    //     start_point: Vec3 {x:-0.75, y:-1.0, z:0.65},
+    //     control_point1: Vec3 {x:-0.75, y:-1.0, z:0.65},
+    //     control_point2: Vec3 {x:-0.85, y:-1.0, z:0.6},
+    //     end_point: Vec3 {x:-0.85, y:-1.1, z:0.7},
+    // };
+
+    // let bezier_path8 = BezierPath {  //path
+    //     start_point: Vec3 {x:-0.85, y:-1.5, z:0.595},
+    //     control_point1: Vec3 {x:-0.5, y:-1.5, z:0.595},
+    //     control_point2: Vec3 {x:-0.3, y:-1.5, z:0.595},
+    //     end_point: Vec3 {x:0.0, y:-1.5, z:0.595},
+    // };
+
+    // let bezier_path_point = BezierPath {  //point
+    //     start_point: Vec3 {x:-0.85, y:-1.1, z:0.7},
+    //     control_point1: Vec3 {x:-0.5, y:-1.1, z:0.7},
+    //     control_point2: Vec3 {x:-0.3, y:-1.1, z:0.7},
+    //     end_point: Vec3 {x:0.0, y:-1.1, z:0.7},
+    // };
     
     //let t = 0.25;
     //let mut cam_pos = Vec3::zeros();
@@ -105,20 +153,24 @@ pub fn get_camera(t: f32) -> Camera {
     //     num_of_samples = 10;
     // };
 
-    let cam_pos = evaluate_cubic_bezier(&bezier_path6, t);
-    let point_pos = evaluate_cubic_bezier(&bezier_path7, t);
+    //let cam_pos = Vec3 {x:-0.86, y:-0.55, z:0.595};
+    //let point_pos = Vec3{x:-0.8, y:-0.55, z:0.54};
+    
+    //let cam_pos = evaluate_cubic_bezier(&bezier_path8, t);
+    //let cam_pos = Vec3 {x:-0.85, y:-1.5, z:0.595};
+    //let point_pos = evaluate_cubic_bezier(&bezier_path_point, t);
 
     //let cam_pos = Vec3{x:-6.1, y:-3.88, z:-3.858};
     //let cam_pos = Vec3{x:-0.9, y:-0.55, z:0.595};
     //let cam_pos = Vec3 { x: -0.7, y: -0.53, z: 0.6 };
-    //let cam_pos = Vec3{x:-1.0, y:0.0, z:0.0};
+    let cam_pos = Vec3{x:0.0, y:0.0, z:0.0};
     
     //let point_pos = Vec3{x:-3.0, y:-3.88, z:-3.858};
     //  let point_pos = Vec3{x:0.0, y:0.0, z:0.0};
 
     //let phi: f32 = - PI / 4.0;          //spin
-    //let phi: f32 = 0.0;
-    //let theta: f32 = PI / 2.0;  //up/down
+    let phi: f32 = 0.0;
+    let theta: f32 = PI / 2.0;  //up/down
 
 
 
@@ -132,7 +184,7 @@ pub fn get_camera(t: f32) -> Camera {
 
 
     //Convert
-    let (phi, theta) = look_at_point(cam_pos, point_pos);
+    //let (phi, theta) = look_at_point(cam_pos, point_pos);
     let mut cam_dir = Vec3{
         x: theta.sin() * phi.cos(),
         y: theta.cos(),
